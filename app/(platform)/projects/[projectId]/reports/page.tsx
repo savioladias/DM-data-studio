@@ -334,24 +334,31 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
 </html>
       `
 
-      // Create an invisible container and render HTML to canvas
-      const container = document.createElement('div')
-      container.style.position = 'absolute'
-      container.style.left = '-9999px'
-      container.style.width = '1200px'
-      container.style.background = 'white'
-      container.innerHTML = htmlContent
-      document.body.appendChild(container)
+      // Create a sandboxed iframe to completely isolate from Tailwind CSS
+      const iframe = document.createElement('iframe')
+      iframe.style.position = 'absolute'
+      iframe.style.left = '-9999px'
+      iframe.style.width = '1200px'
+      iframe.style.height = '100vh'
+      document.body.appendChild(iframe)
+
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
+      if (!iframeDoc) throw new Error('Could not access iframe document')
+
+      iframeDoc.documentElement.innerHTML = htmlContent
+
+      // Wait for iframe content to load
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       const { default: html2canvas } = await import('html2canvas')
-      const canvas = await html2canvas(container, {
+      const canvas = await html2canvas(iframeDoc.body, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
         allowTaint: true,
       })
-      document.body.removeChild(container)
+      document.body.removeChild(iframe)
 
       const imgData = canvas.toDataURL('image/png')
       const pdf = new jsPDF({
