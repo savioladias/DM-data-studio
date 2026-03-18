@@ -125,9 +125,11 @@ export function ChannelConnectionsSection({ projectId, enabledChannels }: Channe
                 >
                   <div className="flex items-start gap-3 flex-1">
                     <div
-                      className="h-3 w-3 rounded-full flex-shrink-0 mt-1.5"
+                      className="h-5 w-5 rounded-md flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 mt-0.5"
                       style={{ backgroundColor: channel.color }}
-                    />
+                    >
+                      {channel.label.charAt(0)}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium text-sm">{channel.label}</span>

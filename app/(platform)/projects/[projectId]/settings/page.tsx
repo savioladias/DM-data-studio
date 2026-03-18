@@ -199,7 +199,7 @@ export default function ProjectSettingsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
+    <div className="p-6 space-y-10 max-w-3xl">
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Settings2 className="h-5 w-5" />
@@ -318,34 +318,36 @@ export default function ProjectSettingsPage() {
             </div>
           </div>
 
-          {/* Website & Brand Color */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="website">Website</Label>
-              <Input
-                id="website"
-                type="url"
-                value={formData.website}
-                onChange={e => setFormData(d => ({ ...d, website: e.target.value }))}
-                placeholder="https://example.com"
+          {/* Website */}
+          <div className="space-y-2">
+            <Label htmlFor="website">Website</Label>
+            <Input
+              id="website"
+              type="url"
+              value={formData.website}
+              onChange={e => setFormData(d => ({ ...d, website: e.target.value }))}
+              placeholder="https://example.com"
+            />
+          </div>
+
+          {/* Brand Color */}
+          <div className="space-y-2">
+            <Label htmlFor="brandColor">Brand Colour</Label>
+            <div className="flex items-center gap-2">
+              <input
+                id="brandColor"
+                type="color"
+                value={formData.brandColor}
+                onChange={e => setFormData(d => ({ ...d, brandColor: e.target.value }))}
+                className="h-10 w-12 rounded cursor-pointer border border-border bg-transparent"
               />
-            </div>
-            <div className="space-y-2">
-              <Label>Brand Colour</Label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={formData.brandColor}
-                  onChange={e => setFormData(d => ({ ...d, brandColor: e.target.value }))}
-                  className="h-10 w-12 rounded cursor-pointer border border-border bg-transparent"
-                />
-                <Input
-                  value={formData.brandColor}
-                  onChange={e => setFormData(d => ({ ...d, brandColor: e.target.value }))}
-                  className="font-mono text-sm flex-1"
-                  maxLength={7}
-                />
-              </div>
+              <Input
+                value={formData.brandColor}
+                onChange={e => setFormData(d => ({ ...d, brandColor: e.target.value }))}
+                className="font-mono text-sm flex-1"
+                maxLength={7}
+                placeholder="#6366f1"
+              />
             </div>
           </div>
 
@@ -365,16 +367,18 @@ export default function ProjectSettingsPage() {
 
           <Separator />
 
-          <Button onClick={handleSaveProject} disabled={saving} className="w-full">
-            {saving ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              'Save Project Details'
-            )}
-          </Button>
+          <div className="flex justify-end">
+            <Button onClick={handleSaveProject} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Project Details'
+              )}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -396,8 +400,12 @@ export default function ProjectSettingsPage() {
                   return (
                     <label
                       key={channel.id}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        toggleChannel(channel.id)
+                      }}
                       className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                        isSelected ? 'border-primary/50 bg-primary/5' : 'border-border hover:border-primary/30'
+                        isSelected ? 'border-primary bg-primary/8' : 'border-border hover:border-primary/40'
                       }`}
                     >
                       <Checkbox
@@ -407,10 +415,12 @@ export default function ProjectSettingsPage() {
                       />
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <span
-                            className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+                          <div
+                            className="h-4 w-4 rounded-sm flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0"
                             style={{ backgroundColor: channel.color }}
-                          />
+                          >
+                            {channel.label.charAt(0)}
+                          </div>
                           <span className="font-medium text-sm">{channel.label}</span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">{channel.description}</p>
@@ -429,7 +439,13 @@ export default function ProjectSettingsPage() {
                 {selectedChannels.map(id => {
                   const ch = getChannel(id as ChannelId)
                   return ch ? (
-                    <Badge key={id} variant="secondary" className="text-xs">
+                    <Badge key={id} variant="secondary" className="text-xs gap-1.5">
+                      <div
+                        className="h-3 w-3 rounded-sm flex items-center justify-center text-white text-[8px] font-semibold"
+                        style={{ backgroundColor: ch.color }}
+                      >
+                        {ch.label.charAt(0)}
+                      </div>
                       {ch.label}
                     </Badge>
                   ) : null
@@ -440,16 +456,18 @@ export default function ProjectSettingsPage() {
 
           <Separator />
 
-          <Button onClick={handleSaveChannels} disabled={saving} className="w-full">
-            {saving ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              'Save Channels'
-            )}
-          </Button>
+          <div className="flex justify-end">
+            <Button onClick={handleSaveChannels} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Channels'
+              )}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
