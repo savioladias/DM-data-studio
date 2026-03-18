@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ArrowLeft, TrendingUp, TrendingDown, Minus, Sparkles, Loader2, Eye } from 'lucide-react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
 import { ForecastChart } from '@/components/dashboard/forecast-chart'
 import { generateForecast } from '@/lib/forecast'
 import { getChannel } from '@/lib/channels'
@@ -156,9 +156,12 @@ export function ChannelDetail({
           <div>
             <div className="flex items-center gap-3 mb-1">
               <div
-                className="h-4 w-4 rounded-full"
+                className="h-5 w-5 rounded-md flex items-center justify-center text-white text-xs font-semibold"
                 style={{ backgroundColor: channel?.color || '#ccc' }}
-              />
+                title={channel?.label}
+              >
+                {channel?.label.charAt(0) || 'C'}
+              </div>
               <h1 className="text-2xl font-bold">{channel?.label || channelId}</h1>
             </div>
             <p className="text-sm text-muted-foreground">
@@ -205,7 +208,7 @@ export function ChannelDetail({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-3 gap-6">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Total Metrics</p>
                   <p className="text-3xl font-bold">{channelMetrics.length}</p>
@@ -219,13 +222,6 @@ export function ChannelDetail({
                   <p className="text-xs text-muted-foreground mb-1">Areas of Concern</p>
                   <p className="text-3xl font-bold text-red-500">↓{negativeCount}</p>
                   <p className="text-xs text-red-600 mt-1">declining</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Stable</p>
-                  <p className="text-3xl font-bold text-muted-foreground">
-                    {channelMetrics.length - positiveCount - negativeCount}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">no change</p>
                 </div>
               </div>
             </CardContent>
@@ -304,17 +300,54 @@ export function ChannelDetail({
                     </CardHeader>
 
                     <CardContent className="space-y-4">
-                      {/* Chart */}
+                      {/* Stats at top */}
+                      {(metric.deltaPercent !== undefined || metric.previous !== undefined) && (
+                        <div className="space-y-2 pb-2 border-b">
+                          {metric.deltaPercent !== undefined && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">Change vs. Previous</span>
+                              <div className={cn(
+                                'flex items-center gap-1 font-medium',
+                                isPositive ? 'text-emerald-500' : isNegative ? 'text-red-500' : 'text-muted-foreground'
+                              )}>
+                                {isPositive && <TrendingUp className="h-3 w-3" />}
+                                {isNegative && <TrendingDown className="h-3 w-3" />}
+                                {!isPositive && !isNegative && <Minus className="h-3 w-3" />}
+                                <span className="text-sm">
+                                  {metric.deltaPercent > 0 ? '+' : ''}{metric.deltaPercent.toFixed(1)}%
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                          {metric.previous !== undefined && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">Previous Period</span>
+                              <span className="text-sm font-medium text-muted-foreground">
+                                {formatValue(metric.previous)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Chart with gradient */}
                       <div className="w-full h-48 -mx-4">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={chartData}>
+                          <AreaChart data={chartData}>
+                            <defs>
+                              <linearGradient id={`gradient-${metric.key}`} x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={trendColor} stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor={trendColor} stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.1} />
                             <XAxis
                               dataKey="date"
-                              tick={{ fontSize: 12 }}
+                              tick={{ fontSize: 11 }}
                               tickLine={false}
                               stroke="currentColor"
                               opacity={0.5}
+                              interval={Math.floor(chartData.length / 5)}
                             />
                             <YAxis
                               tick={{ fontSize: 12 }}
@@ -332,44 +365,17 @@ export function ChannelDetail({
                               formatter={(value: any) => formatValue(value)}
                               labelFormatter={(label: any) => label}
                             />
-                            <Line
+                            <Area
                               type="monotone"
                               dataKey="value"
                               stroke={trendColor}
+                              fill={`url(#gradient-${metric.key})`}
                               dot={false}
                               strokeWidth={2}
                               isAnimationActive={false}
                             />
-                          </LineChart>
+                          </AreaChart>
                         </ResponsiveContainer>
-                      </div>
-
-                      {/* Stats */}
-                      <div className="pt-2 border-t space-y-2">
-                        {metric.deltaPercent !== undefined && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Change vs. Previous</span>
-                            <div className={cn(
-                              'flex items-center gap-1 font-medium',
-                              isPositive ? 'text-emerald-500' : isNegative ? 'text-red-500' : 'text-muted-foreground'
-                            )}>
-                              {isPositive && <TrendingUp className="h-3 w-3" />}
-                              {isNegative && <TrendingDown className="h-3 w-3" />}
-                              {!isPositive && !isNegative && <Minus className="h-3 w-3" />}
-                              <span className="text-sm">
-                                {metric.deltaPercent > 0 ? '+' : ''}{metric.deltaPercent.toFixed(1)}%
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                        {metric.previous !== undefined && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Previous Period</span>
-                            <span className="text-sm font-medium text-muted-foreground">
-                              {formatValue(metric.previous)}
-                            </span>
-                          </div>
-                        )}
                       </div>
                     </CardContent>
                   </Card>

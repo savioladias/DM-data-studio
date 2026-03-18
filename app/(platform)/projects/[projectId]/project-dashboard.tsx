@@ -109,9 +109,9 @@ export function ProjectDashboard({ project, enabledChannels, recentInsights }: P
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold">{project.name}</h1>
+            <h1 className="text-xl font-bold">{project.clientName}</h1>
             <p className="text-sm text-muted-foreground">
-              {project.clientName} · {totalChannels} channel{totalChannels !== 1 ? 's' : ''}
+              {totalChannels} channel{totalChannels !== 1 ? 's' : ''} • {connectedChannels} connected
             </p>
           </div>
 
@@ -133,26 +133,32 @@ export function ProjectDashboard({ project, enabledChannels, recentInsights }: P
         </div>
       </div>
 
-      {/* Status bar */}
-      <div className="flex flex-wrap gap-2">
-        {enabledChannels.map(channelId => {
-          const channel = getChannel(channelId)
-          const hasData = metrics[channelId]?.length > 0
-          return channel ? (
-            <Badge
-              key={channelId}
-              variant={hasData ? 'default' : 'outline'}
-              className="text-xs gap-1.5"
-            >
-              <span
-                className="h-1.5 w-1.5 rounded-full"
-                style={{ backgroundColor: hasData ? channel.color : undefined }}
-              />
-              {channel.label}
-            </Badge>
-          ) : null
-        })}
-      </div>
+      {/* Connected channels pills - only show connected channels */}
+      {connectedChannels > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {enabledChannels.map(channelId => {
+            const channel = getChannel(channelId)
+            const hasData = metrics[channelId]?.length > 0
+            if (!hasData) return null
+            return channel ? (
+              <Badge
+                key={channelId}
+                variant="default"
+                className="text-xs gap-1.5"
+              >
+                <div
+                  className="h-3 w-3 rounded-sm flex items-center justify-center text-white text-[9px] font-semibold flex-shrink-0"
+                  style={{ backgroundColor: channel.color }}
+                  title={channel.label}
+                >
+                  {channel.label.charAt(0)}
+                </div>
+                <span className="truncate">{channel.label}</span>
+              </Badge>
+            ) : null
+          })}
+        </div>
+      )}
 
       {/* Loading */}
       {loading ? (
@@ -170,7 +176,7 @@ export function ProjectDashboard({ project, enabledChannels, recentInsights }: P
                   <TrendingUp className="h-4 w-4 text-primary" />
                   Overall Performance
                 </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Connected Channels</p>
                     <p className="text-2xl font-bold">{connectedChannels}</p>

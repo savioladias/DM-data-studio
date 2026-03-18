@@ -120,7 +120,13 @@ export function ChannelSection({ projectId, channelId, metrics, dateRange }: Cha
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           onClick={() => setCollapsed(c => !c)}
         >
-          <Circle className="h-3 w-3 fill-current" style={{ color: channel.color }} />
+          <div
+            className="h-3 w-3 rounded-sm flex items-center justify-center text-white text-[9px] font-semibold"
+            style={{ backgroundColor: channel.color }}
+            title={channel.label}
+          >
+            {channel.label.charAt(0)}
+          </div>
           <h2 className="font-semibold text-base">{channel.label}</h2>
           <Badge variant="outline" className="text-xs">{channel.category}</Badge>
           {positiveCount > 0 && (
@@ -135,7 +141,6 @@ export function ChannelSection({ projectId, channelId, metrics, dateRange }: Cha
         <div className="flex items-center gap-2">
           <Link href={`/projects/${projectId}/channels/${channelId}`}>
             <Button
-              variant="outline"
               size="sm"
               className="text-xs gap-1.5"
             >
