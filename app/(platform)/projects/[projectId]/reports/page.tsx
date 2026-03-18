@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { FileText, Loader2, FileJson } from 'lucide-react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { getChannel } from '@/lib/channels'
 import type { ChannelId } from '@/lib/channels'
 import { toast } from 'sonner'
@@ -364,36 +364,9 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Total Metrics</p>
-            <p className="text-3xl font-bold mt-2">{totalMetrics}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Positive Trends</p>
-            <p className="text-3xl font-bold text-emerald-500 mt-2">↑{positiveMetrics}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Areas of Concern</p>
-            <p className="text-3xl font-bold text-red-500 mt-2">↓{negativeMetrics}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Selected Channels</p>
-            <p className="text-3xl font-bold mt-2">{selectedChannels.length}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Sidebar - Channel Selection */}
-        <div className="lg:col-span-1 space-y-4">
+        <div className="lg:col-span-1 space-y-4 flex flex-col">
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Select Channels</CardTitle>
@@ -418,7 +391,7 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
           </Card>
 
           {selectedChannels.length > 0 && (
-            <Card>
+            <Card className="mt-auto">
               <CardHeader>
                 <CardTitle className="text-sm">Export Report</CardTitle>
               </CardHeader>
@@ -441,7 +414,7 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
         </div>
 
         {/* Main Content - Report Builder */}
-        <div className="lg:col-span-3 space-y-6">
+        <div className="lg:col-span-4 space-y-6">
           {/* Executive Summary */}
           <Card>
             <CardHeader>
@@ -453,7 +426,7 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                 placeholder="Write your executive summary here. Include key highlights, trends, and strategic observations..."
                 value={executiveSummary}
                 onChange={(e) => setExecutiveSummary(e.target.value)}
-                className="min-h-[120px]"
+                className="min-h-[120px] border border-border bg-muted/30 p-4"
               />
             </CardContent>
           </Card>
@@ -499,9 +472,11 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div
-                            className="h-4 w-4 rounded-full"
+                            className="h-5 w-5 rounded-md flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
                             style={{ backgroundColor: getChannel(channel.channel)?.color }}
-                          />
+                          >
+                            {getChannel(channel.channel)?.label.charAt(0) || 'C'}
+                          </div>
                           <div>
                             <CardTitle className="text-base">{channel.label}</CardTitle>
                             <CardDescription className="text-xs">
@@ -549,28 +524,47 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                       </div>
 
                       {/* Mini Chart for top metric */}
-                      {channel.metrics.length > 0 && (
-                        <div>
-                          <p className="text-sm font-semibold mb-3">Top Metric Trend — {channel.metrics[0].label}</p>
-                          <div className="w-full h-40">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <LineChart data={generateMetricHistory(channel.metrics[0].value, channel.metrics[0].trend)}>
-                                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                                <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                                <YAxis tick={{ fontSize: 12 }} />
-                                <Tooltip formatter={(value: number | undefined) => value !== undefined ? formatValue(value) : ''} />
-                                <Line
-                                  type="monotone"
-                                  dataKey="value"
-                                  stroke={channel.metrics[0].trend === 'up' ? '#10b981' : channel.metrics[0].trend === 'down' ? '#ef4444' : '#6b7280'}
-                                  dot={false}
-                                  strokeWidth={2}
-                                />
-                              </LineChart>
-                            </ResponsiveContainer>
+                      {channel.metrics.length > 0 && (() => {
+                        const chartData = generateMetricHistory(channel.metrics[0].value, channel.metrics[0].trend)
+                        const trendColor = channel.metrics[0].trend === 'up' ? '#10b981' : channel.metrics[0].trend === 'down' ? '#ef4444' : '#6b7280'
+                        return (
+                          <div>
+                            <p className="text-sm font-semibold mb-3">Top Metric Trend — {channel.metrics[0].label}</p>
+                            <div className="w-full h-40">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={chartData}>
+                                  <defs>
+                                    <linearGradient id={`gradient-report-${channel.channel}`} x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="5%" stopColor={trendColor} stopOpacity={0.3}/>
+                                      <stop offset="95%" stopColor={trendColor} stopOpacity={0}/>
+                                    </linearGradient>
+                                  </defs>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.1} />
+                                  <XAxis
+                                    dataKey="date"
+                                    tick={{ fontSize: 12 }}
+                                    tickLine={false}
+                                    stroke="currentColor"
+                                    opacity={0.5}
+                                    interval={Math.floor(chartData.length / 5)}
+                                  />
+                                  <YAxis tick={{ fontSize: 12 }} tickLine={false} stroke="currentColor" opacity={0.5} />
+                                  <Tooltip formatter={(value: number | undefined) => value !== undefined ? formatValue(value) : ''} contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
+                                  <Area
+                                    type="monotone"
+                                    dataKey="value"
+                                    stroke={trendColor}
+                                    fill={`url(#gradient-report-${channel.channel})`}
+                                    dot={false}
+                                    strokeWidth={2}
+                                    isAnimationActive={false}
+                                  />
+                                </AreaChart>
+                              </ResponsiveContainer>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )
+                      })()}
 
                       {/* Platform Summary */}
                       <div className="pt-4 border-t">
@@ -579,7 +573,7 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                           placeholder={`Write your analysis for ${channel.label}. Include key findings, challenges, opportunities, and recommendations specific to this platform...`}
                           value={channelSummaries[channel.channel] || ''}
                           onChange={(e) => updateChannelSummary(channel.channel, e.target.value)}
-                          className="min-h-[100px]"
+                          className="min-h-[100px] border border-border bg-muted/30 p-4"
                         />
                       </div>
                     </CardContent>
@@ -600,7 +594,7 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                 placeholder="Document your conclusions, key findings, and recommended actions..."
                 value={conclusions}
                 onChange={(e) => setConclusions(e.target.value)}
-                className="min-h-[150px]"
+                className="min-h-[150px] border border-border bg-muted/30 p-4"
               />
             </CardContent>
           </Card>
