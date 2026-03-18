@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Brain, FileText, Settings2, ChevronRight
+  LayoutDashboard, FileText, Settings2, ChevronRight
 } from 'lucide-react'
 import { ProjectAvatar } from '@/components/project-avatar'
 import type { ChannelId } from '@/lib/channels'
@@ -34,11 +34,6 @@ export function ProjectSidebar({ projectId, projectName, clientName, logoUrl, br
       label: 'Overview',
       href: base,
       icon: <LayoutDashboard className="h-4 w-4" />,
-    },
-    {
-      label: 'AI Summary',
-      href: `${base}/ai-insights`,
-      icon: <Brain className="h-4 w-4" />,
     },
     {
       label: 'Reports',
