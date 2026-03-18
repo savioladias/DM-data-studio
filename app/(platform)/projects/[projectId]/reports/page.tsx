@@ -168,12 +168,13 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
     }
   }
 
-  const exportAsPDF = () => {
+  const exportAsPDF = async () => {
     if (selectedChannels.length === 0) {
       toast.error('Select at least one channel to export')
       return
     }
 
+    setExporting(true)
     try {
       const selectedDataList = metrics.filter(m => selectedChannels.includes(m.channel))
       const today = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -181,186 +182,197 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
       const positiveMetricsCount = selectedDataList.reduce((sum, c) => sum + c.metrics.filter(m => m.trend === 'up').length, 0)
       const negativeMetricsCount = selectedDataList.reduce((sum, c) => sum + c.metrics.filter(m => m.trend === 'down').length, 0)
 
+      // Generate HTML content with proper styling
+      const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a1a1a; }
+    .page { page-break-after: always; padding: 40px; min-height: 297mm; }
+    .cover-page { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+    .cover-page h1 { font-size: 48px; margin-bottom: 20px; color: #1a1a1a; }
+    .cover-page .client-name { font-size: 28px; font-weight: 600; color: #0084ff; margin: 30px 0; }
+    .cover-page .date-range { font-size: 16px; color: #666; margin: 10px 0; }
+    .cover-page .generated { font-size: 12px; color: #999; margin-top: 40px; }
+
+    h2 { font-size: 24px; margin: 30px 0 15px 0; color: #1a1a1a; border-bottom: 2px solid #0084ff; padding-bottom: 10px; }
+    h3 { font-size: 16px; margin: 20px 0 10px 0; color: #1a1a1a; }
+
+    .executive-summary { background: #f0f7ff; padding: 20px; border-left: 4px solid #0084ff; border-radius: 4px; margin: 20px 0; line-height: 1.5; }
+    .executive-summary h3 { margin-top: 0; color: #0084ff; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 20px 0; }
+    .kpi-card { background: #f9f9f9; border: 1px solid #ddd; padding: 20px; text-align: center; border-radius: 4px; }
+    .kpi-value { font-size: 32px; font-weight: bold; margin-bottom: 10px; }
+    .kpi-label { font-size: 12px; color: #666; text-transform: uppercase; font-weight: 600; }
+
+    .channel-section { page-break-inside: avoid; margin: 30px 0; padding: 20px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; }
+    .channel-header { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+    .channel-icon { width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; }
+    .channel-title { font-size: 18px; font-weight: bold; color: #1a1a1a; }
+    .channel-meta { font-size: 12px; color: #666; }
+
+    table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+    th { background: #f0f0f0; padding: 12px; text-align: left; font-weight: 600; font-size: 13px; border-bottom: 2px solid #ddd; }
+    td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 12px; }
+    tr:last-child td { border-bottom: none; }
+
+    .metric-value { font-weight: 600; color: #1a1a1a; }
+    .positive { color: #10b981; font-weight: bold; }
+    .negative { color: #ef4444; font-weight: bold; }
+    .stable { color: #666; }
+
+    .ai-insights { background: #e6f7ff; border-left: 3px solid #0084ff; padding: 15px; margin: 15px 0; border-radius: 4px; font-size: 12px; line-height: 1.6; }
+    .ai-insights h4 { margin: 0 0 10px 0; color: #0084ff; font-size: 13px; }
+
+    .conclusions { background: #f0f9ff; border-left: 4px solid #0284c7; padding: 20px; margin: 20px 0; border-radius: 4px; }
+    .conclusions h3 { margin-top: 0; color: #0284c7; }
+  </style>
+</head>
+<body>
+  <!-- Cover Page -->
+  <div class="page cover-page">
+    <h1>Marketing Performance Report</h1>
+    <div class="client-name">${projectData?.clientName ?? 'Project'}</div>
+    <div class="date-range">Date Range: ${startDate ?? 'N/A'} to ${endDate ?? 'N/A'}</div>
+    <div class="generated">Generated on ${today}</div>
+  </div>
+
+  <!-- Main Content Page -->
+  <div class="page">
+    <h2>Executive Summary</h2>
+    <div class="executive-summary">
+      <p>${executiveSummary || 'Overview of marketing performance across selected channels. Key highlights and trends are detailed in the channel-specific sections below.'}</p>
+    </div>
+
+    <h2>Key Metrics Overview</h2>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-value" style="color: #0084ff;">${totalMetricsCount}</div>
+        <div class="kpi-label">Total Metrics</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value positive">${positiveMetricsCount}</div>
+        <div class="kpi-label">Positive Trends</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value negative">${negativeMetricsCount}</div>
+        <div class="kpi-label">Areas of Concern</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value">${totalMetricsCount - positiveMetricsCount - negativeMetricsCount}</div>
+        <div class="kpi-label">Stable Metrics</div>
+      </div>
+    </div>
+
+    ${selectedDataList.map(channel => {
+      const posCount = channel.metrics.filter(m => m.trend === 'up').length
+      const negCount = channel.metrics.filter(m => m.trend === 'down').length
+      const channelColor = getChannel(channel.channel)?.color || '#0084ff'
+
+      return `
+        <div class="channel-section">
+          <div class="channel-header">
+            <div class="channel-icon" style="background-color: ${channelColor};">${getChannel(channel.channel)?.label.charAt(0) || 'C'}</div>
+            <div>
+              <div class="channel-title">${channel.label}</div>
+              <div class="channel-meta">${channel.metrics.length} metrics • ${posCount} positive • ${negCount} declining</div>
+            </div>
+          </div>
+
+          <h3>Performance Metrics</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Metric Name</th>
+                <th style="text-align: right;">Current Value</th>
+                <th style="text-align: right;">Previous Period</th>
+                <th style="text-align: center;">Change</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${channel.metrics.map(metric => {
+                const isPositive = metric.trend === 'up'
+                const isNegative = metric.trend === 'down'
+                const arrow = isPositive ? '↑' : isNegative ? '↓' : '—'
+                const changeClass = isPositive ? 'positive' : isNegative ? 'negative' : 'stable'
+                const changePct = metric.deltaPercent ? (metric.deltaPercent > 0 ? '+' : '') + metric.deltaPercent.toFixed(1) + '%' : '—'
+
+                return `
+                  <tr>
+                    <td><strong>${metric.label}</strong></td>
+                    <td style="text-align: right;" class="metric-value">${formatValue(metric.value)} ${metric.unit}</td>
+                    <td style="text-align: right;">${metric.previous ? formatValue(metric.previous) : '—'}</td>
+                    <td style="text-align: center;"><span class="${changeClass}">${arrow} ${changePct}</span></td>
+                  </tr>
+                `
+              }).join('')}
+            </tbody>
+          </table>
+
+          ${channelSummaries[channel.channel] ? `
+            <div class="ai-insights">
+              <h4>📊 AI Insights & Channel Summary</h4>
+              <p>${channelSummaries[channel.channel].replace(/\n/g, '<br>')}</p>
+            </div>
+          ` : ''}
+        </div>
+      `
+    }).join('')}
+
+    ${conclusions ? `
+      <div class="conclusions">
+        <h3>Conclusions & Recommendations</h3>
+        <p>${conclusions}</p>
+      </div>
+    ` : ''}
+  </div>
+</body>
+</html>
+      `
+
+      // Create an invisible container and render HTML to canvas
+      const container = document.createElement('div')
+      container.style.position = 'absolute'
+      container.style.left = '-9999px'
+      container.style.width = '1200px'
+      container.style.background = 'white'
+      container.innerHTML = htmlContent
+      document.body.appendChild(container)
+
+      const { default: html2canvas } = await import('html2canvas')
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        allowTaint: true,
+      })
+      document.body.removeChild(container)
+
+      const imgData = canvas.toDataURL('image/png')
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
       })
 
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      const margin = 15
-      const contentWidth = pageWidth - 2 * margin
-      let yPosition = margin
+      const imgWidth = 210
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      let heightLeft = imgHeight
+      let position = 0
 
-      // Helper to check if we need new page
-      const checkNewPage = (spaceNeeded: number) => {
-        if (yPosition + spaceNeeded > pageHeight - margin) {
-          pdf.addPage()
-          yPosition = margin
-        }
-      }
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= 297
 
-      // Header
-      pdf.setFontSize(18)
-      pdf.setTextColor(26, 26, 26)
-      pdf.setFont(undefined, 'bold')
-      pdf.text('Marketing Performance Report', margin, yPosition)
-      yPosition += 10
-
-      pdf.setFontSize(10)
-      pdf.setTextColor(102, 102, 102)
-      pdf.setFont(undefined, 'normal')
-      pdf.text(`Generated on ${today}` || '', margin, yPosition)
-      yPosition += 6
-
-      pdf.setFontSize(11)
-      pdf.setTextColor(102, 102, 102)
-      pdf.setFont(undefined, 'bold')
-      pdf.text((projectData?.clientName ?? 'Project') || '', margin, yPosition)
-      yPosition += 6
-
-      pdf.setFontSize(9)
-      pdf.setTextColor(153, 153, 153)
-      pdf.setFont(undefined, 'normal')
-      pdf.text(`Date Range: ${startDate ?? 'N/A'} to ${endDate ?? 'N/A'}` || '', margin, yPosition)
-      yPosition += 6
-
-      pdf.setTextColor(102, 102, 102)
-      pdf.text(`${selectedDataList.length} channel${selectedDataList.length !== 1 ? 's' : ''} | ${totalMetricsCount} total metrics` || '', margin, yPosition)
-      yPosition += 10
-
-      // Executive Summary
-      checkNewPage(20)
-      pdf.setFillColor(240, 247, 255)
-      pdf.rect(margin, yPosition, contentWidth, 15, 'F')
-      pdf.setFontSize(11)
-      pdf.setTextColor(0, 132, 255)
-      pdf.setFont(undefined, 'bold')
-      pdf.text('Executive Summary', margin + 2, yPosition + 4)
-      yPosition += 6
-
-      pdf.setFontSize(9)
-      pdf.setTextColor(51, 51, 51)
-      pdf.setFont(undefined, 'normal')
-      const summaryText = pdf.splitTextToSize(
-        executiveSummary || 'Overview of marketing performance across selected channels.',
-        contentWidth - 4
-      )
-      pdf.text(summaryText, margin + 2, yPosition)
-      yPosition += summaryText.length * 4 + 8
-
-      // Key Metrics
-      checkNewPage(20)
-      const metricsArray = [
-        { label: 'Total Metrics', value: totalMetricsCount, color: [0, 132, 255] as [number, number, number] },
-        { label: 'Positive Trends', value: positiveMetricsCount, color: [16, 185, 129] as [number, number, number] },
-        { label: 'Areas of Concern', value: negativeMetricsCount, color: [239, 68, 68] as [number, number, number] },
-        { label: 'Stable Metrics', value: totalMetricsCount - positiveMetricsCount - negativeMetricsCount, color: [102, 102, 102] as [number, number, number] },
-      ]
-
-      const boxWidth = (contentWidth - 6) / 4
-      let xPos = margin
-      metricsArray.forEach((m) => {
-        pdf.setFillColor(249, 249, 249)
-        pdf.rect(xPos, yPosition, boxWidth, 16, 'F')
-        pdf.setTextColor(m.color[0], m.color[1], m.color[2])
-        pdf.setFontSize(13)
-        pdf.setFont(undefined, 'bold')
-        pdf.text(m.value.toString(), xPos + boxWidth / 2, yPosition + 7, { align: 'center' })
-        pdf.setTextColor(102, 102, 102)
-        pdf.setFontSize(7)
-        pdf.setFont(undefined, 'normal')
-        pdf.text(m.label, xPos + boxWidth / 2, yPosition + 13, { align: 'center' })
-        xPos += boxWidth + 1.5
-      })
-      yPosition += 22
-
-      // Channel Details
-      checkNewPage(15)
-      pdf.setTextColor(26, 26, 26)
-      pdf.setFontSize(12)
-      pdf.setFont(undefined, 'bold')
-      pdf.text('Channel Performance Details', margin, yPosition)
-      yPosition += 10
-
-      // For each channel
-      selectedDataList.forEach((channel) => {
-        checkNewPage(15)
-
-        const posCount = channel.metrics.filter(m => m.trend === 'up').length
-        const negCount = channel.metrics.filter(m => m.trend === 'down').length
-
-        // Channel name
-        pdf.setTextColor(26, 26, 26)
-        pdf.setFontSize(11)
-        pdf.setFont(undefined, 'bold')
-        pdf.text((channel.label || 'Channel') as string, margin, yPosition)
-        yPosition += 5
-
-        // Channel stats
-        pdf.setTextColor(102, 102, 102)
-        pdf.setFontSize(8)
-        pdf.setFont(undefined, 'normal')
-        pdf.text(`${channel.metrics.length} metrics | ${posCount} positive · ${negCount} declining` || '', margin, yPosition)
-        yPosition += 6
-
-        // Metrics list
-        pdf.setFontSize(7)
-        channel.metrics.forEach(metric => {
-          checkNewPage(4)
-          const trendEmoji = metric.trend === 'up' ? '↑' : metric.trend === 'down' ? '↓' : '—'
-          const changePercent = metric.deltaPercent ? (metric.deltaPercent > 0 ? '+' : '') + metric.deltaPercent.toFixed(1) + '%' : '—'
-
-          pdf.setTextColor(51, 51, 51)
-          pdf.text(`${metric.label}: ${formatValue(metric.value)} ${metric.unit}` || '', margin + 2, yPosition)
-
-          pdf.setTextColor(metric.trend === 'up' ? 16 : metric.trend === 'down' ? 239 : 102, metric.trend === 'up' ? 185 : metric.trend === 'down' ? 68 : 102, metric.trend === 'up' ? 129 : 68)
-          pdf.text(`${trendEmoji} (${changePercent})`, contentWidth - 20, yPosition)
-
-          yPosition += 3.5
-        })
-
-        yPosition += 3
-
-        // Channel summary if exists
-        if (channelSummaries[channel.channel]) {
-          checkNewPage(10)
-          pdf.setFillColor(240, 247, 255)
-          pdf.rect(margin, yPosition, contentWidth, 5, 'F')
-          pdf.setTextColor(0, 132, 255)
-          pdf.setFontSize(8)
-          pdf.setFont(undefined, 'bold')
-          pdf.text('Analysis & Summary' || '', margin + 2, yPosition + 3)
-          yPosition += 6
-
-          pdf.setTextColor(51, 51, 51)
-          pdf.setFontSize(7)
-          pdf.setFont(undefined, 'normal')
-          const summaryLines = pdf.splitTextToSize((channelSummaries[channel.channel] || '') as string, contentWidth - 4)
-          pdf.text(summaryLines, margin + 2, yPosition)
-          yPosition += summaryLines.length * 3 + 4
-        }
-
-        yPosition += 3
-      })
-
-      // Conclusions
-      if (conclusions) {
-        checkNewPage(15)
-        pdf.setFillColor(240, 249, 255)
-        pdf.rect(margin, yPosition, contentWidth, 5, 'F')
-        pdf.setTextColor(2, 132, 199)
-        pdf.setFontSize(11)
-        pdf.setFont(undefined, 'bold')
-        pdf.text('Conclusions & Recommendations', margin + 2, yPosition + 3)
-        yPosition += 7
-
-        pdf.setTextColor(51, 51, 51)
-        pdf.setFontSize(8)
-        pdf.setFont(undefined, 'normal')
-        const conclusionLines = pdf.splitTextToSize(conclusions ?? '', contentWidth - 4)
-        pdf.text(conclusionLines as string[], margin + 2, yPosition)
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        heightLeft -= 297
       }
 
       pdf.save(`marketing-report-${new Date().toISOString().split('T')[0]}.pdf`)
@@ -368,6 +380,8 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
     } catch (error) {
       console.error('PDF export error:', error)
       toast.error('Failed to export PDF')
+    } finally {
+      setExporting(false)
     }
   }
 
