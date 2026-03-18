@@ -70,10 +70,13 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
   const [executiveSummary, setExecutiveSummary] = useState('')
   const [conclusions, setConclusions] = useState('')
   const [channelSummaries, setChannelSummaries] = useState<Record<string, string>>({})
+  const [savedSummaries, setSavedSummaries] = useState<Record<string, string>>({})
+  const [editingChannel, setEditingChannel] = useState<ChannelId | null>(null)
   const [projectData, setProjectData] = useState<ProjectData | null>(null)
   const [exporting, setExporting] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [generatingAI, setGeneratingAI] = useState<ChannelId | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -846,13 +849,130 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
 
                       {/* Platform Summary */}
                       <div className="pt-4 border-t">
-                        <p className="text-sm font-semibold mb-3">{channel.label} Analysis & Summary</p>
-                        <Textarea
-                          placeholder={`Write your analysis for ${channel.label}. Include key findings, challenges, opportunities, and recommendations specific to this platform...`}
-                          value={channelSummaries[channel.channel] || ''}
-                          onChange={(e) => updateChannelSummary(channel.channel, e.target.value)}
-                          className="min-h-[100px] border border-border bg-muted/30 p-4"
-                        />
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-semibold">{channel.label} Analysis & Summary</p>
+                          {savedSummaries[channel.channel] && editingChannel !== channel.channel && (
+                            <Button
+                              onClick={() => {
+                                setEditingChannel(channel.channel)
+                                setChannelSummaries(prev => ({
+                                  ...prev,
+                                  [channel.channel]: savedSummaries[channel.channel]
+                                }))
+                              }}
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                            >
+                              Edit
+                            </Button>
+                          )}
+                        </div>
+
+                        {savedSummaries[channel.channel] && editingChannel !== channel.channel ? (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap">
+                            {savedSummaries[channel.channel]}
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <Textarea
+                              placeholder={`Write your analysis for ${channel.label}. Include key findings, challenges, opportunities, and recommendations specific to this platform...`}
+                              value={channelSummaries[channel.channel] || ''}
+                              onChange={(e) => updateChannelSummary(channel.channel, e.target.value)}
+                              className="min-h-[100px] border border-border bg-muted/30 p-4"
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => {
+                                  setSavedSummaries(prev => ({
+                                    ...prev,
+                                    [channel.channel]: channelSummaries[channel.channel]
+                                  }))
+                                  setEditingChannel(null)
+                                  toast.success('Summary saved')
+                                }}
+                                size="sm"
+                                disabled={!channelSummaries[channel.channel]?.trim()}
+                              >
+                                Save Summary
+                              </Button>
+                              {editingChannel === channel.channel && (
+                                <Button
+                                  onClick={() => {
+                                    setEditingChannel(null)
+                                    setChannelSummaries(prev => ({
+                                      ...prev,
+                                      [channel.channel]: savedSummaries[channel.channel] || ''
+                                    }))
+                                  }}
+                                  variant="outline"
+                                  size="sm"
+                                >
+                                  Cancel
+                                </Button>
+                              )}
+                              <Button
+                                onClick={async () => {
+                                  setGeneratingAI(channel.channel)
+                                  try {
+                                    const selectedDat = metrics.filter(m => selectedChannels.includes(m.channel))
+                                    const channelData = selectedDat.find(c => c.channel === channel.channel)
+
+                                    const res = await fetch('/api/ai/insights', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        projectId,
+                                        type: 'channel_analysis',
+                                        data: {
+                                          channel: channel.label,
+                                          metrics: channelData?.metrics.map(m => ({
+                                            name: m.label,
+                                            value: m.value,
+                                            unit: m.unit,
+                                            previousValue: m.previous,
+                                            changePercent: m.deltaPercent,
+                                            trend: m.trend,
+                                          })) || [],
+                                        },
+                                      }),
+                                    })
+
+                                    if (res.ok) {
+                                      const data = await res.json()
+                                      const aiSummary = data.message || data.insight || 'Unable to generate summary'
+                                      setChannelSummaries(prev => ({
+                                        ...prev,
+                                        [channel.channel]: aiSummary
+                                      }))
+                                      toast.success('AI summary generated')
+                                    } else if (res.status === 503) {
+                                      toast.error('AI features unavailable. Configure API key.')
+                                    } else {
+                                      toast.error('Failed to generate AI summary')
+                                    }
+                                  } catch (error) {
+                                    toast.error('Error generating AI summary')
+                                  } finally {
+                                    setGeneratingAI(null)
+                                  }
+                                }}
+                                variant="outline"
+                                size="sm"
+                                disabled={generatingAI === channel.channel}
+                              >
+                                {generatingAI === channel.channel ? (
+                                  <>
+                                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                    Generating...
+                                  </>
+                                ) : (
+                                  'Generate with AI'
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
