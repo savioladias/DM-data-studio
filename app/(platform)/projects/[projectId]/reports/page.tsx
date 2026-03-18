@@ -327,7 +327,7 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
 
           ${savedSummaries[channel.channel] ? `
             <div class="ai-insights">
-              <h4>📊 AI Insights & Channel Summary</h4>
+              <h4>Channel Summary</h4>
               <p>${savedSummaries[channel.channel].replace(/\n/g, '<br>')}</p>
             </div>
           ` : ''}
