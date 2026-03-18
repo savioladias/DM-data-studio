@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
-import { FileText, Loader2, FileJson } from 'lucide-react'
+import { FileText, Loader2, FileJson, Download } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { getChannel } from '@/lib/channels'
 import type { ChannelId } from '@/lib/channels'
 import { toast } from 'sonner'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
 
 interface ReportMetrics {
   channel: ChannelId
@@ -54,6 +56,12 @@ function formatValue(v: number | string) {
   return v.toLocaleString()
 }
 
+interface ProjectData {
+  id: string
+  clientName: string
+  createdAt: string
+}
+
 export default function ReportsPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = use(params)
   const [metrics, setMetrics] = useState<ReportMetrics[]>([])
@@ -63,14 +71,19 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
   const [executiveSummary, setExecutiveSummary] = useState('')
   const [conclusions, setConclusions] = useState('')
   const [channelSummaries, setChannelSummaries] = useState<Record<string, string>>({})
+  const [projectData, setProjectData] = useState<ProjectData | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
 
   useEffect(() => {
-    const fetchMetrics = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch(`/api/projects/${projectId}/metrics`)
-        const data = await res.json()
+        // Fetch metrics
+        const metricsRes = await fetch(`/api/projects/${projectId}/metrics`)
+        const metricsData = await metricsRes.json()
 
-        const reportData = Object.entries(data.metrics ?? {}).map(([channelId, channelMetrics]) => ({
+        const reportData = Object.entries(metricsData.metrics ?? {}).map(([channelId, channelMetrics]) => ({
           channel: channelId as ChannelId,
           label: getChannel(channelId as ChannelId)?.label ?? channelId,
           metrics: channelMetrics as ReportMetrics['metrics'],
@@ -78,14 +91,25 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
 
         setMetrics(reportData)
         setSelectedChannels(reportData.map(m => m.channel))
+
+        // Fetch project data for client name
+        const projectRes = await fetch(`/api/projects/${projectId}`)
+        const projData = await projectRes.json()
+        setProjectData(projData)
+
+        // Set default date range (last 30 days)
+        const end = new Date()
+        const start = new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000)
+        setStartDate(start.toISOString().split('T')[0])
+        setEndDate(end.toISOString().split('T')[0])
       } catch (error) {
-        toast.error('Failed to load metrics')
+        toast.error('Failed to load data')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchMetrics()
+    fetchData()
   }, [projectId])
 
   const toggleChannel = (channelId: ChannelId) => {
@@ -142,6 +166,175 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
       toast.error('Failed to generate report')
     } finally {
       setGenerating(false)
+    }
+  }
+
+  const exportAsPDF = async () => {
+    if (selectedChannels.length === 0) {
+      toast.error('Select at least one channel to export')
+      return
+    }
+
+    setExporting(true)
+    try {
+      const selectedData = metrics.filter(m => selectedChannels.includes(m.channel))
+      const today = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })
+      const totalMetrics = selectedData.reduce((sum, c) => sum + c.metrics.length, 0)
+      const positiveMetrics = selectedData.reduce((sum, c) => sum + c.metrics.filter(m => m.trend === 'up').length, 0)
+      const negativeMetrics = selectedData.reduce((sum, c) => sum + c.metrics.filter(m => m.trend === 'down').length, 0)
+
+      // Create HTML content for PDF
+      const htmlContent = document.createElement('div')
+      htmlContent.style.padding = '40px'
+      htmlContent.style.fontFamily = "'Segoe UI', Arial, sans-serif"
+      htmlContent.style.backgroundColor = 'white'
+      htmlContent.style.width = '1200px'
+      htmlContent.innerHTML = `
+        <div style="max-width: 1000px; margin: 0 auto;">
+          <!-- Header -->
+          <div style="text-align: center; margin-bottom: 40px; border-bottom: 3px solid #0084ff; padding-bottom: 30px;">
+            <h1 style="margin: 0 0 10px 0; font-size: 32px; color: #1a1a1a;">Marketing Performance Report</h1>
+            <p style="color: #666; font-size: 14px; margin: 10px 0;">Generated on ${today}</p>
+            <p style="color: #666; margin: 15px 0 0 0;"><strong>${projectData?.clientName || 'Project'}</strong></p>
+            <p style="color: #999; font-size: 13px; margin: 5px 0 0 0;">Date Range: ${startDate || 'N/A'} to ${endDate || 'N/A'}</p>
+            <p style="color: #666; margin: 15px 0 0 0;">${selectedData.length} channel${selectedData.length !== 1 ? 's' : ''} | ${totalMetrics} total metrics</p>
+          </div>
+
+          <!-- Executive Summary -->
+          <div style="background: #f0f7ff; padding: 20px; border-left: 4px solid #0084ff; margin: 30px 0; border-radius: 4px;">
+            <h3 style="margin-top: 0; color: #0084ff;">Executive Summary</h3>
+            <p style="color: #333; line-height: 1.6;">${executiveSummary || 'Overview of marketing performance across selected channels. Key highlights and trends are detailed in the channel-specific sections below.'}</p>
+          </div>
+
+          <!-- Key Metrics Grid -->
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 30px 0;">
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #ddd;">
+              <div style="font-size: 32px; font-weight: bold; color: #0084ff;">${totalMetrics}</div>
+              <div style="font-size: 12px; color: #666; text-transform: uppercase; margin-top: 10px;">Total Metrics</div>
+            </div>
+            <div style="background: #f0fff4; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #c6f6d5;">
+              <div style="font-size: 32px; font-weight: bold; color: #10b981;">${positiveMetrics}</div>
+              <div style="font-size: 12px; color: #666; text-transform: uppercase; margin-top: 10px;">Positive Trends</div>
+            </div>
+            <div style="background: #fff5f5; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #fed7d7;">
+              <div style="font-size: 32px; font-weight: bold; color: #ef4444;">${negativeMetrics}</div>
+              <div style="font-size: 12px; color: #666; text-transform: uppercase; margin-top: 10px;">Areas of Concern</div>
+            </div>
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #ddd;">
+              <div style="font-size: 32px; font-weight: bold; color: #666;">${totalMetrics - positiveMetrics - negativeMetrics}</div>
+              <div style="font-size: 12px; color: #666; text-transform: uppercase; margin-top: 10px;">Stable Metrics</div>
+            </div>
+          </div>
+
+          <!-- Channel Details -->
+          <h2 style="font-size: 20px; font-weight: bold; margin: 40px 0 20px 0; color: #1a1a1a; border-bottom: 2px solid #0084ff; padding-bottom: 10px;">Channel Performance Details</h2>
+
+          ${selectedData.map((channel) => {
+            const positiveCount = channel.metrics.filter(m => m.trend === 'up').length
+            const negativeCount = channel.metrics.filter(m => m.trend === 'down').length
+
+            return `
+              <div style="margin: 40px 0; padding: 30px; background: #f9f9f9; border-radius: 8px; border: 1px solid #ddd; page-break-inside: avoid;">
+                <h3 style="margin-top: 0; color: #1a1a1a; border-bottom: 2px solid #0084ff; padding-bottom: 10px;">${channel.label}</h3>
+                <p style="color: #666; margin: 10px 0 0 0;">${channel.metrics.length} metrics | ${positiveCount} positive · ${negativeCount} declining</p>
+
+                <!-- Metrics Table -->
+                <div style="margin: 20px 0;">
+                  <h4 style="margin: 20px 0 10px 0;">Performance Metrics</h4>
+                  <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <thead>
+                      <tr style="background: #f0f0f0;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #ddd;">Metric</th>
+                        <th style="padding: 12px; text-align: right; font-weight: 600; border-bottom: 2px solid #ddd;">Current Value</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600; border-bottom: 2px solid #ddd;">Trend</th>
+                        <th style="padding: 12px; text-align: right; font-weight: 600; border-bottom: 2px solid #ddd;">Previous Value</th>
+                        <th style="padding: 12px; text-align: right; font-weight: 600; border-bottom: 2px solid #ddd;">Change</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${channel.metrics.map(metric => {
+                        const trendEmoji = metric.trend === 'up' ? '↑' : metric.trend === 'down' ? '↓' : '—'
+                        const trendColor = metric.trend === 'up' ? '#10b981' : metric.trend === 'down' ? '#ef4444' : '#666'
+                        const changeColor = metric.deltaPercent && metric.deltaPercent < 0 ? '#ef4444' : metric.deltaPercent && metric.deltaPercent > 0 ? '#10b981' : '#666'
+                        return `
+                          <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 12px;"><strong>${metric.label}</strong></td>
+                            <td style="padding: 12px; text-align: right;"><strong>${formatValue(metric.value)}</strong> ${metric.unit}</td>
+                            <td style="padding: 12px; text-align: center; color: ${trendColor}; font-weight: bold;">${trendEmoji}</td>
+                            <td style="padding: 12px; text-align: right;">${metric.previous ? formatValue(metric.previous) : '—'}</td>
+                            <td style="padding: 12px; text-align: right; color: ${changeColor}; font-weight: bold;">${metric.deltaPercent ? (metric.deltaPercent > 0 ? '+' : '') + metric.deltaPercent.toFixed(1) + '%' : '—'}</td>
+                          </tr>
+                        `
+                      }).join('')}
+                    </tbody>
+                  </table>
+                </div>
+
+                ${channelSummaries[channel.channel] ? `
+                  <div style="margin: 20px 0; padding: 15px; background: #f0f7ff; border-left: 3px solid #0084ff; border-radius: 4px;">
+                    <h4 style="margin-top: 0; color: #0084ff;">Analysis & Summary</h4>
+                    <p style="color: #333; line-height: 1.6;">${channelSummaries[channel.channel].replace(/\n/g, '<br>')}</p>
+                  </div>
+                ` : ''}
+              </div>
+            `
+          }).join('')}
+
+          <!-- Conclusions -->
+          ${conclusions ? `
+            <div style="background: #f0f9ff; padding: 20px; border-left: 4px solid #0284c7; margin: 30px 0; border-radius: 4px;">
+              <h3 style="margin-top: 0; color: #0284c7;">Conclusions & Recommendations</h3>
+              <p style="color: #333; line-height: 1.6;">${conclusions}</p>
+            </div>
+          ` : ''}
+
+          <!-- Footer -->
+          <div style="margin-top: 60px; padding-top: 20px; border-top: 2px solid #ddd; font-size: 11px; color: #999; text-align: center;">
+            <p>This report contains performance metrics from selected marketing channels. Data is accurate as of ${today}.</p>
+            <p>For detailed analysis or questions, please contact your marketing team.</p>
+          </div>
+        </div>
+      `
+
+      // Render to canvas and convert to PDF
+      document.body.appendChild(htmlContent)
+      const canvas = await html2canvas(htmlContent, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      })
+      document.body.removeChild(htmlContent)
+
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      })
+
+      const imgWidth = 210 // A4 width in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      let heightLeft = imgHeight
+      let position = 0
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= 297 // A4 height in mm
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        heightLeft -= 297
+      }
+
+      pdf.save(`marketing-report-${new Date().toISOString().split('T')[0]}.pdf`)
+      toast.success('Report exported as PDF')
+    } catch (error) {
+      console.error('PDF export error:', error)
+      toast.error('Failed to export PDF')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -367,6 +560,33 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Sidebar - Channel Selection */}
         <div className="lg:col-span-1 space-y-4 flex flex-col">
+          {/* Date Range */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Date Range</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground font-medium">From</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full mt-1 px-2 py-1 text-sm border border-border rounded-md"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground font-medium">To</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full mt-1 px-2 py-1 text-sm border border-border rounded-md"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Select Channels</CardTitle>
@@ -396,17 +616,21 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                 <CardTitle className="text-sm">Export Report</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button onClick={exportAsHTML} variant="outline" className="w-full justify-start">
+                <Button onClick={exportAsPDF} disabled={exporting} className="w-full justify-start bg-primary hover:bg-primary/90">
+                  {exporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                  Download PDF
+                </Button>
+                <Button onClick={exportAsHTML} variant="outline" className="w-full justify-start text-xs">
                   <FileText className="h-4 w-4 mr-2" />
                   Export as HTML
                 </Button>
-                <Button onClick={exportAsJSON} variant="outline" className="w-full justify-start">
+                <Button onClick={exportAsJSON} variant="outline" className="w-full justify-start text-xs">
                   <FileJson className="h-4 w-4 mr-2" />
                   Export as JSON
                 </Button>
-                <Button onClick={generateReport} disabled={generating} className="w-full mt-2">
+                <Button onClick={generateReport} disabled={generating} variant="outline" className="w-full mt-2 text-xs">
                   {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
-                  Generate Report
+                  Generate Insights
                 </Button>
               </CardContent>
             </Card>
