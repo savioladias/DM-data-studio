@@ -511,28 +511,23 @@ export default function ProjectSettingsPage() {
 
       {/* Delete Project Card */}
       <Card className="border-red-500/20 bg-red-50/50 dark:bg-red-950/20">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2 text-red-600">
-            <AlertTriangle className="h-5 w-5" />
-            Danger Zone
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2 text-red-600">
+            <AlertTriangle className="h-4 w-4" />
+            Delete Project
           </CardTitle>
-          <CardDescription>
-            Permanently delete this project and all associated data
-          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Once you delete a project, there is no going back. Please be certain.
-          </p>
+        <CardContent className="space-y-2">
           {deleteConfirmed && (
-            <div className="p-4 rounded-lg border border-red-500/30 bg-red-50/50 dark:bg-red-950/30">
-              <p className="text-sm font-medium text-red-600 mb-3">
-                Are you absolutely sure? This action cannot be undone.
+            <div className="p-3 rounded-lg border border-red-500/30 bg-red-50/50 dark:bg-red-950/30">
+              <p className="text-xs font-medium text-red-600 mb-2">
+                This action cannot be undone.
               </p>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
+                  className="h-8 text-xs"
                   onClick={() => setDeleteConfirmed(false)}
                   disabled={deleting}
                 >
@@ -541,18 +536,19 @@ export default function ProjectSettingsPage() {
                 <Button
                   variant="destructive"
                   size="sm"
+                  className="h-8 text-xs"
                   onClick={handleDeleteProject}
                   disabled={deleting}
                 >
                   {deleting ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                       Deleting...
                     </>
                   ) : (
                     <>
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Project
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      Delete
                     </>
                   )}
                 </Button>
@@ -562,10 +558,12 @@ export default function ProjectSettingsPage() {
           {!deleteConfirmed && (
             <Button
               variant="destructive"
+              size="sm"
+              className="h-8 text-xs"
               onClick={handleDeleteProject}
               disabled={deleting}
             >
-              <Trash2 className="h-4 w-4 mr-2" />
+              <Trash2 className="h-3 w-3 mr-1" />
               Delete Project
             </Button>
           )}
