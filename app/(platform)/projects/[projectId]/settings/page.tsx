@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Settings2, Upload, Loader2 } from 'lucide-react'
+import { Settings2, Upload, Loader2, Trash2, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { ProjectAvatar } from '@/components/project-avatar'
 import { ChannelConnectionsSection } from '@/components/settings/channel-connections-section'
@@ -42,11 +42,14 @@ interface ProjectData {
 export default function ProjectSettingsPage() {
   const params = useParams()
   const projectId = params.projectId as string
+  const router = useRouter()
 
   const [project, setProject] = useState<ProjectData | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -181,6 +184,29 @@ export default function ProjectSettingsPage() {
         ? prev.filter(c => c !== channelId)
         : [...prev, channelId]
     )
+  }
+
+  const handleDeleteProject = async () => {
+    if (!deleteConfirmed) {
+      setDeleteConfirmed(true)
+      return
+    }
+
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'DELETE',
+      })
+
+      if (!res.ok) throw new Error('Failed to delete project')
+      toast.success('Project deleted successfully')
+      router.push('/')
+    } catch (error) {
+      toast.error('Failed to delete project')
+      setDeleteConfirmed(false)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   if (loading) {
@@ -482,6 +508,69 @@ export default function ProjectSettingsPage() {
         projectId={projectId}
         enabledChannels={selectedChannels as ChannelId[]}
       />
+
+      {/* Delete Project Card */}
+      <Card className="border-red-500/20 bg-red-50/50 dark:bg-red-950/20">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2 text-red-600">
+            <AlertTriangle className="h-5 w-5" />
+            Danger Zone
+          </CardTitle>
+          <CardDescription>
+            Permanently delete this project and all associated data
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Once you delete a project, there is no going back. Please be certain.
+          </p>
+          {deleteConfirmed && (
+            <div className="p-4 rounded-lg border border-red-500/30 bg-red-50/50 dark:bg-red-950/30">
+              <p className="text-sm font-medium text-red-600 mb-3">
+                Are you absolutely sure? This action cannot be undone.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDeleteConfirmed(false)}
+                  disabled={deleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDeleteProject}
+                  disabled={deleting}
+                >
+                  {deleting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Project
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+          {!deleteConfirmed && (
+            <Button
+              variant="destructive"
+              onClick={handleDeleteProject}
+              disabled={deleting}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Project
+            </Button>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
