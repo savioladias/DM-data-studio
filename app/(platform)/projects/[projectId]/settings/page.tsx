@@ -518,8 +518,11 @@ export default function ProjectSettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Once deleted, there is no going back. Please be certain.
+          </p>
           {deleteConfirmed && (
-            <div className="p-3 rounded-lg border border-red-500/30 bg-red-50/50 dark:bg-red-950/30">
+            <div className="p-2 rounded-lg border border-red-500/30 bg-red-50/50 dark:bg-red-950/30">
               <p className="text-xs font-medium text-red-600 mb-2">
                 This action cannot be undone.
               </p>
