@@ -77,6 +77,12 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [generatingAI, setGeneratingAI] = useState<ChannelId | null>(null)
+  const [savedExecutiveSummary, setSavedExecutiveSummary] = useState('')
+  const [savedConclusions, setSavedConclusions] = useState('')
+  const [editingExecutive, setEditingExecutive] = useState(false)
+  const [editingConclusions, setEditingConclusions] = useState(false)
+  const [generatingExecutiveAI, setGeneratingExecutiveAI] = useState(false)
+  const [generatingConclusionsAI, setGeneratingConclusionsAI] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -711,13 +717,106 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
               <CardTitle>Executive Summary</CardTitle>
               <CardDescription>Overview of performance across selected channels</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder="Write your executive summary here. Include key highlights, trends, and strategic observations..."
-                value={executiveSummary}
-                onChange={(e) => setExecutiveSummary(e.target.value)}
-                className="min-h-[120px] border border-border bg-muted/30 p-4"
-              />
+            <CardContent className="space-y-3">
+              {savedExecutiveSummary && !editingExecutive ? (
+                <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                  {savedExecutiveSummary}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <Textarea
+                    placeholder="Write your executive summary here. Include key highlights, trends, and strategic observations..."
+                    value={executiveSummary}
+                    onChange={(e) => setExecutiveSummary(e.target.value)}
+                    className="min-h-[120px] border border-border bg-muted/30 p-4"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => {
+                        setSavedExecutiveSummary(executiveSummary)
+                        setEditingExecutive(false)
+                        toast.success('Executive summary saved')
+                      }}
+                      size="sm"
+                      disabled={!executiveSummary?.trim()}
+                    >
+                      Save Summary
+                    </Button>
+                    {editingExecutive && (
+                      <Button
+                        onClick={() => {
+                          setEditingExecutive(false)
+                          setExecutiveSummary(savedExecutiveSummary || '')
+                        }}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                    <Button
+                      onClick={async () => {
+                        setGeneratingExecutiveAI(true)
+                        try {
+                          const res = await fetch('/api/ai/insights', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              projectId,
+                              type: 'executive_summary',
+                              data: {
+                                metrics: metrics.flatMap(m => m.metrics.map(metric => ({
+                                  channel: m.label,
+                                  metricName: metric.label,
+                                  currentValue: metric.value,
+                                  previousValue: metric.previous,
+                                  deltaPercent: metric.deltaPercent,
+                                  unit: metric.unit,
+                                  trend: metric.trend,
+                                }))),
+                              },
+                            }),
+                          })
+
+                          const data = await res.json()
+                          if (res.ok) {
+                            setExecutiveSummary(data.insight || '')
+                            toast.success('Generated with AI')
+                          } else {
+                            toast.error(data.error || 'Failed to generate')
+                          }
+                        } catch (error) {
+                          toast.error('Failed to generate summary')
+                        } finally {
+                          setGeneratingExecutiveAI(false)
+                        }
+                      }}
+                      variant="outline"
+                      size="sm"
+                      disabled={generatingExecutiveAI}
+                    >
+                      {generatingExecutiveAI ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        'Generate with AI'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {savedExecutiveSummary && (
+                <Button
+                  onClick={() => setEditingExecutive(true)}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                >
+                  Edit
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -996,13 +1095,106 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
               <CardTitle>Conclusions & Recommendations</CardTitle>
               <CardDescription>Summary and next steps based on the data</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder="Document your conclusions, key findings, and recommended actions..."
-                value={conclusions}
-                onChange={(e) => setConclusions(e.target.value)}
-                className="min-h-[150px] border border-border bg-muted/30 p-4"
-              />
+            <CardContent className="space-y-3">
+              {savedConclusions && !editingConclusions ? (
+                <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                  {savedConclusions}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <Textarea
+                    placeholder="Document your conclusions, key findings, and recommended actions..."
+                    value={conclusions}
+                    onChange={(e) => setConclusions(e.target.value)}
+                    className="min-h-[150px] border border-border bg-muted/30 p-4"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => {
+                        setSavedConclusions(conclusions)
+                        setEditingConclusions(false)
+                        toast.success('Conclusions saved')
+                      }}
+                      size="sm"
+                      disabled={!conclusions?.trim()}
+                    >
+                      Save Summary
+                    </Button>
+                    {editingConclusions && (
+                      <Button
+                        onClick={() => {
+                          setEditingConclusions(false)
+                          setConclusions(savedConclusions || '')
+                        }}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                    <Button
+                      onClick={async () => {
+                        setGeneratingConclusionsAI(true)
+                        try {
+                          const res = await fetch('/api/ai/insights', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              projectId,
+                              type: 'conclusions',
+                              data: {
+                                metrics: metrics.flatMap(m => m.metrics.map(metric => ({
+                                  channel: m.label,
+                                  metricName: metric.label,
+                                  currentValue: metric.value,
+                                  previousValue: metric.previous,
+                                  deltaPercent: metric.deltaPercent,
+                                  unit: metric.unit,
+                                  trend: metric.trend,
+                                }))),
+                              },
+                            }),
+                          })
+
+                          const data = await res.json()
+                          if (res.ok) {
+                            setConclusions(data.insight || '')
+                            toast.success('Generated with AI')
+                          } else {
+                            toast.error(data.error || 'Failed to generate')
+                          }
+                        } catch (error) {
+                          toast.error('Failed to generate conclusions')
+                        } finally {
+                          setGeneratingConclusionsAI(false)
+                        }
+                      }}
+                      variant="outline"
+                      size="sm"
+                      disabled={generatingConclusionsAI}
+                    >
+                      {generatingConclusionsAI ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        'Generate with AI'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {savedConclusions && (
+                <Button
+                  onClick={() => setEditingConclusions(true)}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                >
+                  Edit
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
