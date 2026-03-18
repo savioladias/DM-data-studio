@@ -286,6 +286,15 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
             </div>
           </div>
 
+          ${channel.metrics[0] ? `
+            <div style="margin: 15px 0;">
+              <h3 style="margin-top: 0; margin-bottom: 10px;">Top Metric Trend Chart</h3>
+              <div style="background: #f9f9f9; padding: 15px; border-radius: 4px; text-align: center; font-size: 12px; color: #666;">
+                [Chart: ${channel.metrics[0].label} - 30 Day Trend]
+              </div>
+            </div>
+          ` : ''}
+
           <h3>Performance Metrics</h3>
           <table>
             <thead>
@@ -316,10 +325,10 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
             </tbody>
           </table>
 
-          ${channelSummaries[channel.channel] ? `
+          ${savedSummaries[channel.channel] ? `
             <div class="ai-insights">
               <h4>📊 AI Insights & Channel Summary</h4>
-              <p>${channelSummaries[channel.channel].replace(/\n/g, '<br>')}</p>
+              <p>${savedSummaries[channel.channel].replace(/\n/g, '<br>')}</p>
             </div>
           ` : ''}
         </div>
