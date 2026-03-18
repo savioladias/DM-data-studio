@@ -30,6 +30,8 @@ export default async function ProjectLayout({
       <ProjectSidebar
         projectId={project.id}
         projectName={project.name}
+        clientName={project.clientName}
+        logoUrl={project.logoUrl}
         brandColor={project.brandColor}
         enabledChannels={enabledChannels}
       />

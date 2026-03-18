@@ -14,6 +14,16 @@ export default async function ProjectsHomePage() {
     where: { userId: session.user.id },
     include: { channels: { where: { enabled: true } } },
     orderBy: { updatedAt: 'desc' },
+    select: {
+      id: true,
+      name: true,
+      clientName: true,
+      industry: true,
+      brandColor: true,
+      logoUrl: true,
+      updatedAt: true,
+      channels: { where: { enabled: true }, select: { channel: true } },
+    },
   })
 
   return (

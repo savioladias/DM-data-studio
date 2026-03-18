@@ -5,12 +5,15 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Brain, FileText, Settings2, ChevronRight
 } from 'lucide-react'
+import { ProjectAvatar } from '@/components/project-avatar'
 import type { ChannelId } from '@/lib/channels'
 import { cn } from '@/lib/utils'
 
 interface ProjectSidebarProps {
   projectId: string
   projectName: string
+  clientName: string
+  logoUrl?: string | null
   brandColor: string
   enabledChannels: ChannelId[]
 }
@@ -22,7 +25,7 @@ interface NavItem {
   children?: { label: string; href: string; color?: string }[]
 }
 
-export function ProjectSidebar({ projectId, projectName, brandColor }: ProjectSidebarProps) {
+export function ProjectSidebar({ projectId, projectName, clientName, logoUrl, brandColor }: ProjectSidebarProps) {
   const pathname = usePathname()
   const base = `/projects/${projectId}`
 
@@ -53,12 +56,11 @@ export function ProjectSidebar({ projectId, projectName, brandColor }: ProjectSi
     <div className="flex h-screen w-56 flex-col border-r border-border bg-card">
       {/* Project header */}
       <div className="flex items-center gap-2 px-4 py-4 border-b border-border">
-        <div
-          className="h-8 w-8 rounded-lg flex items-center justify-center text-white font-bold text-xs flex-shrink-0"
-          style={{ backgroundColor: brandColor }}
-        >
-          {projectName.slice(0, 2).toUpperCase()}
-        </div>
+        <ProjectAvatar
+          logoUrl={logoUrl}
+          clientName={clientName}
+          size="sm"
+        />
         <div className="min-w-0">
           <p className="text-sm font-semibold truncate">{projectName}</p>
           <Link href="/" className="text-xs text-muted-foreground hover:text-primary transition-colors">

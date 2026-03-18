@@ -18,6 +18,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { Settings2, Upload, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { ProjectAvatar } from '@/components/project-avatar'
 import { ChannelConnectionsSection } from '@/components/settings/channel-connections-section'
 import { ScheduledReportsSection } from '@/components/settings/scheduled-reports-section'
 import { INDUSTRIES, CURRENCIES } from '@/lib/constants'
@@ -219,15 +220,14 @@ export default function ProjectSettingsPage() {
           <div className="space-y-3">
             <Label>Company Logo</Label>
             <div className="flex items-start gap-4">
-              {logoUrl ? (
-                <div className="h-20 w-20 rounded-lg border border-border bg-muted overflow-hidden">
-                  <img src={logoUrl} alt="Logo" className="h-full w-full object-cover" />
-                </div>
-              ) : (
-                <div className="h-20 w-20 rounded-lg border border-dashed border-border bg-muted flex items-center justify-center">
-                  <span className="text-xs text-muted-foreground text-center px-2">No logo</span>
-                </div>
-              )}
+              <div className={logoUrl ? 'h-20 w-20 rounded-lg border border-border bg-muted overflow-hidden' : 'h-20 w-20 rounded-lg border border-dashed border-border'}>
+                <ProjectAvatar
+                  logoUrl={logoUrl}
+                  clientName={formData.clientName}
+                  size="lg"
+                  className={logoUrl ? 'h-20 w-20' : ''}
+                />
+              </div>
               <div className="flex-1">
                 <label>
                   <input

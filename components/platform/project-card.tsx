@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ArrowUpRight } from 'lucide-react'
+import { ProjectAvatar } from '@/components/project-avatar'
 import { getChannel } from '@/lib/channels'
 import type { ChannelId } from '@/lib/channels'
 
@@ -14,6 +15,7 @@ interface ProjectCardProps {
     clientName: string
     industry?: string | null
     brandColor: string
+    logoUrl?: string | null
     updatedAt: Date | string
     channels: { channel: string }[]
   }
@@ -44,13 +46,11 @@ export function ProjectCard({ project }: ProjectCardProps) {
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-3">
-              {/* Brand colour avatar */}
-              <div
-                className="h-10 w-10 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-                style={{ backgroundColor: project.brandColor }}
-              >
-                {project.name.slice(0, 2).toUpperCase()}
-              </div>
+              <ProjectAvatar
+                logoUrl={project.logoUrl}
+                clientName={project.clientName}
+                size="md"
+              />
               <div>
                 <h3 className="font-semibold text-sm group-hover:text-primary transition-colors">
                   {project.name}
