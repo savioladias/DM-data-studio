@@ -1,0 +1,215 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String?
+  image         String?
+  emailVerified DateTime?
+  accounts      Account[]
+  sessions      Session[]
+  projects      Project[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Project {
+  id            String              @id @default(cuid())
+  name          String
+  clientName    String
+  industry      String?
+  website       String?
+  logoUrl       String?
+  brandColor    String              @default("#6366f1")
+  currency      String              @default("USD")
+  timezone      String              @default("UTC")
+  zohoProjectId String?
+  userId        String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channels    ProjectChannel[]
+  credentials ProjectCredential[]
+  goals       ProjectGoal[]
+  metrics     Metric[]
+  campaigns   Campaign[]
+  insights    Insight[]
+  reports     Report[]
+  csvUploads  CsvUpload[]
+  shareTokens ShareToken[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model ProjectChannel {
+  id        String   @id @default(cuid())
+  projectId String
+  channel   String
+  enabled   Boolean  @default(true)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, channel])
+}
+
+model ProjectCredential {
+  id           String    @id @default(cuid())
+  projectId    String
+  channel      String
+  accessToken  String?
+  refreshToken String?
+  expiresAt    DateTime?
+  accountId    String?
+  accountName  String?
+  metadata     String?
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([projectId, channel])
+}
+
+model ProjectGoal {
+  id        String   @id @default(cuid())
+  projectId String
+  metricKey String
+  target    Float
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, metricKey])
+}
+
+model Metric {
+  id        String   @id @default(cuid())
+  projectId String
+  channel   String
+  metricKey String
+  value     Float
+  dimension String?
+  date      DateTime
+  metadata  String?
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([projectId, channel, date])
+  @@index([projectId, metricKey, date])
+}
+
+model Campaign {
+  id          String    @id @default(cuid())
+  projectId   String
+  channel     String
+  externalId  String
+  name        String
+  status      String
+  objective   String?
+  budget      Float?
+  spend       Float?
+  impressions Int?
+  clicks      Int?
+  conversions Int?
+  startDate   DateTime?
+  endDate     DateTime?
+  metadata    String?
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([projectId, channel, externalId])
+}
+
+model Insight {
+  id        String   @id @default(cuid())
+  projectId String
+  channel   String?
+  metricKey String?
+  type      String
+  title     String
+  body      String
+  severity  String?
+  data      String?
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([projectId, channel])
+  @@index([projectId, type])
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  projectId String
+  title     String
+  content   String?
+  fileUrl   String?
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model CsvUpload {
+  id         String   @id @default(cuid())
+  projectId  String
+  channel    String
+  filename   String
+  rowCount   Int
+  uploadedAt DateTime @default(now())
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, channel])
+}
+
+model ShareToken {
+  id           String    @id @default(cuid())
+  token        String    @unique @default(cuid())
+  projectId    String
+  label        String?
+  expiresAt    DateTime?
+  channels     String?   // JSON array of ChannelId[]
+  createdAt    DateTime  @default(now())
+  lastViewedAt DateTime?
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([token])
+}

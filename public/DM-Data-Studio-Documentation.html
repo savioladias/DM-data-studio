@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DM Data Studio - Complete Feature Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: white;
+            padding: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .cover-page {
+            text-align: center;
+            padding: 60px 0;
+            margin-bottom: 40px;
+            border-bottom: 3px solid #007bff;
+            page-break-after: always;
+        }
+
+        h1 {
+            font-size: 48px;
+            color: #007bff;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 24px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .version {
+            font-size: 14px;
+            color: #999;
+            margin-top: 20px;
+        }
+
+        h2 {
+            font-size: 32px;
+            color: #007bff;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            page-break-after: avoid;
+        }
+
+        h3 {
+            font-size: 22px;
+            color: #0056b3;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            page-break-after: avoid;
+        }
+
+        h4 {
+            font-size: 16px;
+            color: #333;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            page-break-after: avoid;
+        }
+
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        .toc {
+            background: #f5f5f5;
+            padding: 30px;
+            margin: 30px 0;
+            border-radius: 8px;
+            page-break-after: always;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+
+        .toc ul {
+            list-style: none;
+            margin-left: 20px;
+        }
+
+        .toc li {
+            margin-bottom: 12px;
+            font-size: 15px;
+        }
+
+        .toc a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 25px 0;
+        }
+
+        .feature-card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-left: 4px solid #007bff;
+            border-radius: 4px;
+            page-break-inside: avoid;
+        }
+
+        .feature-card h4 {
+            color: #007bff;
+            margin-top: 0;
+        }
+
+        .feature-card ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+
+        .feature-card li {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .sitemap {
+            background: #f0f7ff;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 25px 0;
+            page-break-inside: avoid;
+        }
+
+        .sitemap-item {
+            margin: 15px 0;
+            margin-left: 20px;
+            padding-left: 20px;
+            border-left: 2px solid #0056b3;
+        }
+
+        .sitemap-item.level-1 {
+            margin-left: 0;
+            padding-left: 0;
+            border-left: none;
+            font-weight: 600;
+            color: #0056b3;
+            margin-top: 20px;
+        }
+
+        .sitemap-item.level-2 {
+            margin-left: 30px;
+            font-size: 14px;
+        }
+
+        .sitemap-item.level-3 {
+            margin-left: 60px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .channel-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .channel-item {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 6px;
+            border-top: 3px solid #007bff;
+            page-break-inside: avoid;
+        }
+
+        .channel-item strong {
+            display: block;
+            margin-bottom: 8px;
+            color: #0056b3;
+        }
+
+        .channel-item p {
+            font-size: 13px;
+            margin: 0;
+            color: #666;
+        }
+
+        .stats-box {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            page-break-inside: avoid;
+        }
+
+        .stats-box h4 {
+            color: white;
+            margin-top: 0;
+        }
+
+        .stat-item {
+            display: inline-block;
+            margin-right: 30px;
+            margin-bottom: 10px;
+        }
+
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .section {
+            page-break-after: auto;
+            margin-bottom: 40px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            page-break-inside: avoid;
+        }
+
+        th {
+            background: #007bff;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        tr:hover {
+            background: #f5f5f5;
+        }
+
+        .highlight {
+            background: #fffbf0;
+            padding: 20px;
+            border-left: 4px solid #ff9500;
+            margin: 20px 0;
+            border-radius: 4px;
+            page-break-inside: avoid;
+        }
+
+        .success {
+            background: #f0fdf4;
+            border-left: 4px solid #10b981;
+        }
+
+        .info {
+            background: #f0f7ff;
+            border-left: 4px solid #0284c7;
+        }
+
+        .footer {
+            margin-top: 60px;
+            padding-top: 20px;
+            border-top: 2px solid #ddd;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            page-break-before: always;
+        }
+
+        .page-break {
+            page-break-after: always;
+            margin-bottom: 40px;
+        }
+
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-right: 5px;
+            font-weight: 600;
+        }
+
+        .badge.new {
+            background: #10b981;
+        }
+
+        .badge.feature {
+            background: #f59e0b;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+            }
+            h2 {
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Cover Page -->
+    <div class="cover-page">
+        <h1>DM Data Studio</h1>
+        <p class="subtitle">Marketing Analytics & Reporting Platform</p>
+        <p class="subtitle">Complete Feature Documentation</p>
+        <p class="version">Documentation Generated: March 2026</p>
+    </div>
+
+    <!-- Table of Contents -->
+    <div class="toc">
+        <h3>Table of Contents</h3>
+        <ul>
+            <li>1. Executive Summary</li>
+            <li>2. Application Overview</li>
+            <li>3. User Journey & Sitemap</li>
+            <li>4. Core Features & Functionality</li>
+            <li>5. Supported Marketing Channels</li>
+            <li>6. Dashboard Overview</li>
+            <li>7. Channel Detail Pages</li>
+            <li>8. Reports & Analytics</li>
+            <li>9. AI Features</li>
+            <li>10. Settings & Configuration</li>
+            <li>11. Data Export & Downloads</li>
+            <li>12. Technical Stack</li>
+            <li>13. Feature Specifications</li>
+        </ul>
+    </div>
+
+    <!-- Executive Summary -->
+    <div class="section">
+        <h2>1. Executive Summary</h2>
+        <p>
+            DM Data Studio is a comprehensive marketing analytics and reporting platform designed to consolidate performance metrics from multiple marketing channels into a unified dashboard. The platform enables marketers to track, analyze, and report on campaign performance across 21+ marketing channels with AI-powered insights, detailed visualizations, and professional reporting capabilities.
+        </p>
+        <div class="stats-box">
+            <h4>Platform Highlights</h4>
+            <div class="stat-item">
+                <div class="stat-number">21+</div>
+                <div class="stat-label">Channels</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">100+</div>
+                <div class="stat-label">Metrics</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">3</div>
+                <div class="stat-label">Export Formats</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">AI</div>
+                <div class="stat-label">Powered</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Overview -->
+    <div class="section">
+        <h2>2. Application Overview</h2>
+        <h3>Purpose</h3>
+        <p>
+            DM Data Studio serves as a centralized hub for marketing teams to aggregate data from multiple marketing channels, visualize performance trends, generate professional reports, and leverage AI-powered insights to make data-driven decisions.
+        </p>
+
+        <h3>Key Value Propositions</h3>
+        <ul>
+            <li><strong>Unified Dashboard:</strong> View all marketing channels and metrics in one place</li>
+            <li><strong>Multi-Channel Integration:</strong> Connect Facebook, Instagram, LinkedIn, Google Analytics, and more</li>
+            <li><strong>AI-Powered Insights:</strong> Generate automated analysis and recommendations using Claude AI or Google Gemini</li>
+            <li><strong>Professional Reports:</strong> Create comprehensive reports with charts, data tables, and custom summaries</li>
+            <li><strong>Data Visualization:</strong> 30-day trend charts for all metrics with interactive tooltips</li>
+            <li><strong>Flexible Exports:</strong> Download reports as HTML, JSON, or CSV for further analysis</li>
+            <li><strong>Dark/Light Mode:</strong> Customizable interface with theme toggle</li>
+            <li><strong>Multi-Project Support:</strong> Manage multiple client projects independently</li>
+        </ul>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- User Journey & Sitemap -->
+    <div class="section">
+        <h2>3. User Journey & Sitemap</h2>
+
+        <h3>Application Sitemap</h3>
+        <div class="sitemap">
+            <div class="sitemap-item level-1">📊 Dashboard / Projects</div>
+            <div class="sitemap-item level-2">├─ My Projects (List all projects)</div>
+            <div class="sitemap-item level-2">├─ Create New Project (Wizard)</div>
+            <div class="sitemap-item level-2">└─ Project Details Page</div>
+
+            <div class="sitemap-item level-1">📈 Project Dashboard</div>
+            <div class="sitemap-item level-2">├─ Overall Performance Summary</div>
+            <div class="sitemap-item level-2">├─ Channel Status Indicators</div>
+            <div class="sitemap-item level-2">├─ Recent AI Insights Panel</div>
+            <div class="sitemap-item level-2">├─ Channel Sections (Collapsible)</div>
+            <div class="sitemap-item level-3">├─ Google Analytics 4</div>
+            <div class="sitemap-item level-3">├─ Google Search Console</div>
+            <div class="sitemap-item level-3">├─ Google Ads</div>
+            <div class="sitemap-item level-3">├─ Instagram</div>
+            <div class="sitemap-item level-3">├─ Facebook</div>
+            <div class="sitemap-item level-3">├─ Meta Ads Manager</div>
+            <div class="sitemap-item level-3">├─ LinkedIn Organic</div>
+            <div class="sitemap-item level-3">├─ LinkedIn Ads</div>
+            <div class="sitemap-item level-3">├─ Snapchat Ads</div>
+            <div class="sitemap-item level-3">├─ TikTok Ads</div>
+            <div class="sitemap-item level-3">├─ Mailchimp</div>
+            <div class="sitemap-item level-3">├─ Klaviyo</div>
+            <div class="sitemap-item level-3">├─ HubSpot</div>
+            <div class="sitemap-item level-3">└─ Active Campaign</div>
+
+            <div class="sitemap-item level-1">🔍 Channel Detail Pages</div>
+            <div class="sitemap-item level-2">├─ Facebook Metrics Page</div>
+            <div class="sitemap-item level-3">├─ Performance Summary Card</div>
+            <div class="sitemap-item level-3">├─ All Metrics Grid with Charts</div>
+            <div class="sitemap-item level-3">└─ AI Summary Section</div>
+            <div class="sitemap-item level-2">├─ Instagram Metrics Page</div>
+            <div class="sitemap-item level-2">├─ LinkedIn Metrics Page</div>
+            <div class="sitemap-item level-2">└─ [All other channels...]</div>
+
+            <div class="sitemap-item level-1">📋 Reports Page</div>
+            <div class="sitemap-item level-2">├─ Channel Selection Panel</div>
+            <div class="sitemap-item level-2">├─ Executive Summary Editor</div>
+            <div class="sitemap-item level-2">├─ Key Metrics Overview Cards</div>
+            <div class="sitemap-item level-2">├─ Channel Performance Details</div>
+            <div class="sitemap-item level-3">├─ Metrics Data Table</div>
+            <div class="sitemap-item level-3">├─ 30-day Trend Chart</div>
+            <div class="sitemap-item level-3">└─ Platform-Specific Summary Editor</div>
+            <div class="sitemap-item level-2">├─ Conclusions & Recommendations Editor</div>
+            <div class="sitemap-item level-2">└─ Export Options (HTML, JSON)</div>
+
+            <div class="sitemap-item level-1">⚙️ Project Settings</div>
+            <div class="sitemap-item level-2">├─ Project Details (Name, Client, Industry)</div>
+            <div class="sitemap-item level-2">├─ Company Logo Upload</div>
+            <div class="sitemap-item level-2">├─ Brand Color Selection</div>
+            <div class="sitemap-item level-2">├─ Currency & Timezone Settings</div>
+            <div class="sitemap-item level-2">├─ Zoho Project ID</div>
+            <div class="sitemap-item level-2">└─ Channel Management (Enable/Disable)</div>
+
+            <div class="sitemap-item level-1">🎨 Theme & UI</div>
+            <div class="sitemap-item level-2">├─ Light Mode</div>
+            <div class="sitemap-item level-2">└─ Dark Mode (Toggle in Sidebar)</div>
+
+            <div class="sitemap-item level-1">👤 Account</div>
+            <div class="sitemap-item level-2">├─ User Profile</div>
+            <div class="sitemap-item level-2">└─ Sign Out</div>
+        </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- Core Features -->
+    <div class="section">
+        <h2>4. Core Features & Functionality</h2>
+
+        <h3>Project Management</h3>
+        <div class="feature-card">
+            <h4>✓ Create Projects</h4>
+            <ul>
+                <li>Multi-step wizard with 3 steps</li>
+                <li>Configure project name, client name, industry, and currency</li>
+                <li>Select marketing channels to track</li>
+                <li>Set brand color and timezone</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>✓ Project Dashboard</h4>
+            <ul>
+                <li>Real-time metrics from connected channels</li>
+                <li>Overall performance summary with KPIs</li>
+                <li>Status indicators for each channel</li>
+                <li>Recent AI insights panel</li>
+                <li>Refresh button for manual data updates</li>
+            </ul>
+        </div>
+
+        <h3>Metrics & Data Visualization</h3>
+        <div class="feature-card">
+            <h4>✓ Metric Cards</h4>
+            <ul>
+                <li>Current value display with formatting (K, M, etc.)</li>
+                <li>Trend indicators (↑ ↓ —)</li>
+                <li>Change percentage vs. previous period</li>
+                <li>Color-coded positive/negative trends</li>
+                <li>"Explain" button for AI-powered insights</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>✓ Channel Charts</h4>
+            <ul>
+                <li>30-day trend line charts</li>
+                <li>Interactive tooltips with formatted values</li>
+                <li>Color-coded by trend (green/red/gray)</li>
+                <li>Responsive and theme-aware</li>
+                <li>Available on channel detail pages and reports</li>
+            </ul>
+        </div>
+
+        <h3>Data Filtering & Organization</h3>
+        <div class="feature-card">
+            <h4>✓ Channel Selection</h4>
+            <ul>
+                <li>Enable/disable individual channels</li>
+                <li>Toggle visibility from settings or reports</li>
+                <li>Per-project channel configuration</li>
+                <li>21+ supported channels</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>✓ Collapsible Sections</h4>
+            <ul>
+                <li>Expand/collapse individual channels</li>
+                <li>Show metrics count and trend summary</li>
+                <li>Responsive grid layout</li>
+                <li>Ordered by priority (web, social, ads, email)</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- Supported Channels -->
+    <div class="section">
+        <h2>5. Supported Marketing Channels</h2>
+
+        <h3>Channel Directory</h3>
+        <p>DM Data Studio integrates with 21+ marketing platforms across web analytics, social media, advertising, and email marketing categories:</p>
+
+        <h3>Web Analytics & SEO (3 channels)</h3>
+        <div class="channel-grid">
+            <div class="channel-item">
+                <strong>Google Analytics 4</strong>
+                <p>Website traffic, engagement, conversions, user behavior</p>
+            </div>
+            <div class="channel-item">
+                <strong>Google Search Console</strong>
+                <p>Search performance, keywords, click-through rates, rankings</p>
+            </div>
+            <div class="channel-item">
+                <strong>Google Ads</strong>
+                <p>PPC campaigns, clicks, impressions, conversion data</p>
+            </div>
+        </div>
+
+        <h3>Social Media (5 channels)</h3>
+        <div class="channel-grid">
+            <div class="channel-item">
+                <strong>Facebook</strong>
+                <p>Page engagement, reach, impressions, audience growth</p>
+            </div>
+            <div class="channel-item">
+                <strong>Instagram</strong>
+                <p>Followers, engagement rate, reach, story metrics</p>
+            </div>
+            <div class="channel-item">
+                <strong>LinkedIn Organic</strong>
+                <p>Post performance, follower growth, engagement metrics</p>
+            </div>
+            <div class="channel-item">
+                <strong>TikTok Ads</strong>
+                <p>Video views, engagement, conversion tracking</p>
+            </div>
+            <div class="channel-item">
+                <strong>Snapchat Ads</strong>
+                <p>Ad performance, reach, engagement, conversions</p>
+            </div>
+        </div>
+
+        <h3>Paid Advertising (3 channels)</h3>
+        <div class="channel-grid">
+            <div class="channel-item">
+                <strong>Meta Ads Manager</strong>
+                <p>Facebook & Instagram ads, spend, ROAS, conversions</p>
+            </div>
+            <div class="channel-item">
+                <strong>LinkedIn Ads</strong>
+                <p>Sponsored content, lead generation, impressions</p>
+            </div>
+        </div>
+
+        <h3>Email Marketing (4 channels)</h3>
+        <div class="channel-grid">
+            <div class="channel-item">
+                <strong>Mailchimp</strong>
+                <p>Email performance, subscriber metrics, campaign stats</p>
+            </div>
+            <div class="channel-item">
+                <strong>Klaviyo</strong>
+                <p>Email metrics, segmentation, automation performance</p>
+            </div>
+            <div class="channel-item">
+                <strong>HubSpot</strong>
+                <p>Email campaigns, leads, CRM data integration</p>
+            </div>
+            <div class="channel-item">
+                <strong>Active Campaign</strong>
+                <p>Email metrics, automation, contact engagement</p>
+            </div>
+        </div>
+
+        <p><strong>OAuth Integration Status:</strong> YouTube & Google Search Console have fully working real data connections. LinkedIn, Facebook, and Instagram have OAuth configured with provider-side limitations (deprioritized for future updates).</p>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- Dashboard Overview -->
+    <div class="section">
+        <h2>6. Dashboard Overview</h2>
+
+        <h3>Main Project Dashboard Features</h3>
+
+        <h3>Header Section</h3>
+        <ul>
+            <li>Project name and client name display</li>
+            <li>Connected channels count</li>
+            <li>Last refresh timestamp</li>
+            <li>Manual refresh button with loading indicator</li>
+        </ul>
+
+        <h3>Status Bar</h3>
+        <ul>
+            <li>Color-coded channel indicators</li>
+            <li>Shows connection status for each enabled channel</li>
+            <li>Green dot = data available, hollow dot = not connected</li>
+        </ul>
+
+        <h3>Performance Summary Card</h3>
+        <div class="highlight success">
+            Displays aggregated KPIs:
+            <ul>
+                <li>Total connected channels</li>
+                <li>Total metrics count</li>
+                <li>Positive trending metrics count</li>
+                <li>Declining metrics count</li>
+                <li>Social engagement rate average</li>
+                <li>Website engagement rate (GA4)</li>
+            </ul>
+        </div>
+
+        <h3>Recent AI Insights Panel</h3>
+        <ul>
+            <li>Displays up to 4 recent AI-generated insights</li>
+            <li>Color-coded by severity (critical, warning, info)</li>
+            <li>Shows insight type, title, and description</li>
+            <li>Only visible when AI insights are available</li>
+        </ul>
+
+        <h3>Channel Sections</h3>
+        <ul>
+            <li>One collapsible section per enabled channel</li>
+            <li>Specific order: GA4, GSC, Google Ads, Instagram, Facebook, Meta Ads, LinkedIn Organic, LinkedIn Ads, Snapchat, TikTok, then email platforms</li>
+            <li>Shows channel name with color indicator</li>
+            <li>Displays category badge and trend counts</li>
+            <li>Expandable metrics grid with cards</li>
+            <li>"View Details" button navigates to channel detail page</li>
+            <li>"AI Summary" button generates channel-level insights</li>
+        </ul>
+    </div>
+
+    <!-- Channel Detail Pages -->
+    <div class="section">
+        <h2>7. Channel Detail Pages</h2>
+
+        <h3>Features</h3>
+        <ul>
+            <li><strong>Dedicated Channel Page:</strong> Full-screen view for each marketing channel</li>
+            <li><strong>Breadcrumb Navigation:</strong> Back to overview button with project context</li>
+            <li><strong>Channel Header:</strong> Channel name with color indicator and category badge</li>
+            <li><strong>Performance Summary Card:</strong> Key metrics at a glance</li>
+            <li><strong>Full Metrics Grid:</strong> 3-column responsive layout (lg screens)</li>
+        </ul>
+
+        <h3>Per-Metric Display</h3>
+        <div class="highlight info">
+            Each metric card shows:
+            <ul>
+                <li>Large current value with unit</li>
+                <li>30-day trend chart (line graph)</li>
+                <li>Change percentage vs. previous period</li>
+                <li>Previous period value</li>
+                <li>Color-coded trend indicator (green up, red down, gray stable)</li>
+                <li>Interactive chart tooltips</li>
+            </ul>
+        </div>
+
+        <h3>AI Summary Feature</h3>
+        <ul>
+            <li>AI Summary button in top right</li>
+            <li>Generates detailed analysis using Gemini API</li>
+            <li>Covers all metrics for that channel</li>
+            <li>Styled summary panel with insights icon</li>
+            <li>Graceful degradation if AI key not configured</li>
+        </ul>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- Reports & Analytics -->
+    <div class="section">
+        <h2>8. Reports & Analytics</h2>
+
+        <h3>Reports Page Overview</h3>
+        <p>Comprehensive reporting interface with customizable channel selection, editable summaries, data visualization, and professional export options.</p>
+
+        <h3>Report Builder Components</h3>
+
+        <h3>Executive Summary</h3>
+        <ul>
+            <li>Large textarea for overall report overview</li>
+            <li>Placeholder guidance for content</li>
+            <li>Included in all exports (HTML & JSON)</li>
+        </ul>
+
+        <h3>Key Metrics Overview Cards</h3>
+        <ul>
+            <li>Total metrics count</li>
+            <li>Positive trends count</li>
+            <li>Declining metrics count</li>
+            <li>Stable metrics count</li>
+            <li>Color-coded (blue, green, red, gray)</li>
+        </ul>
+
+        <h3>Channel Performance Details Section</h3>
+        <ul>
+            <li>Individual card per selected channel</li>
+            <li>Performance summary (metrics count, positive/declining)</li>
+            <li>Full metrics data table with columns:
+                <ul>
+                    <li>Metric name</li>
+                    <li>Current value with unit</li>
+                    <li>Trend indicator (↑ ↓ —)</li>
+                    <li>Previous period value</li>
+                    <li>Change percentage</li>
+                </ul>
+            </li>
+            <li>30-day trend chart for top metric</li>
+            <li><strong>Platform-Specific Summary textarea</strong> for detailed analysis per channel</li>
+        </ul>
+
+        <h3>Conclusions & Recommendations</h3>
+        <ul>
+            <li>Large textarea for final insights and recommendations</li>
+            <li>Included in all exports</li>
+        </ul>
+
+        <h3>Export Options</h3>
+        <table>
+            <tr>
+                <th>Format</th>
+                <th>File Type</th>
+                <th>Contents</th>
+                <th>Use Case</th>
+            </tr>
+            <tr>
+                <td><strong>HTML</strong></td>
+                <td>.html</td>
+                <td>Fully formatted report, print-ready</td>
+                <td>Client delivery, sharing, printing to PDF</td>
+            </tr>
+            <tr>
+                <td><strong>JSON</strong></td>
+                <td>.json</td>
+                <td>Structured data with all summaries</td>
+                <td>Data analysis, integration with other tools</td>
+            </tr>
+            <tr>
+                <td><strong>CSV</strong></td>
+                <td>.csv</td>
+                <td>Spreadsheet-compatible metrics</td>
+                <td>Excel analysis, database import</td>
+            </tr>
+        </table>
+
+        <h3>HTML Report Features</h3>
+        <ul>
+            <li>Professional styling with branding colors</li>
+            <li>Executive summary section</li>
+            <li>Summary statistics grid</li>
+            <li>Channel performance tables</li>
+            <li>Platform-specific analysis sections</li>
+            <li>Conclusions section</li>
+            <li>Print-friendly CSS</li>
+            <li>Page breaks for multi-page documents</li>
+        </ul>
+    </div>
+
+    <!-- AI Features -->
+    <div class="section">
+        <h2>9. AI Features</h2>
+
+        <h3>AI Integration Status</h3>
+        <div class="highlight">
+            <strong>Current Model:</strong> Google Generative AI (Gemini) 2.0 Flash
+            <br><strong>Alternative:</strong> Claude Sonnet 4.6 (requires Anthropic API key)
+            <br><strong>Setup:</strong> Add API key to <code>.env.local</code> to enable features
+        </div>
+
+        <h3>AI-Powered Features</h3>
+
+        <h3>1. Metric Insights ("Explain" Button)</h3>
+        <ul>
+            <li>Available on every metric card in dashboard and reports</li>
+            <li>Generates 1-2 sentence insights about specific metric</li>
+            <li>Considers current value, trend, and change percentage</li>
+            <li>Opens in modal dialog</li>
+            <li>Max 30 words for conciseness</li>
+        </ul>
+
+        <h3>2. Channel Summary</h3>
+        <ul>
+            <li>Available on channel section header (dashboard)</li>
+            <li>Available on channel detail page header</li>
+            <li>Analyzes all metrics for that channel</li>
+            <li>Includes recommendations section</li>
+            <li>3-4 sentence summary with actionable insights</li>
+        </ul>
+
+        <h3>3. Platform Analysis (Reports)</h3>
+        <ul>
+            <li>AI button in reports page generates channel recommendations</li>
+            <li>Analyzes data from selected channels</li>
+            <li>Provides prioritized recommendations in JSON format</li>
+            <li>Integrated into report generation workflow</li>
+        </ul>
+
+        <h3>4. Question-Based Insights (AI Summary Page)</h3>
+        <ul>
+            <li>Ask specific questions about metrics</li>
+            <li>AI analyzes all selected channel data</li>
+            <li>Provides targeted answers with data references</li>
+            <li>2-4 sentence responses focused on user question</li>
+        </ul>
+
+        <h3>AI Capabilities</h3>
+        <ul>
+            <li>Natural language analysis of marketing metrics</li>
+            <li>Trend identification and interpretation</li>
+            <li>Performance comparison across channels</li>
+            <li>Anomaly detection and flagging</li>
+            <li>Actionable recommendations for improvement</li>
+            <li>Context-aware insights based on data patterns</li>
+        </ul>
+
+        <h3>Error Handling</h3>
+        <div class="highlight info">
+            <ul>
+                <li>Graceful degradation if API key not configured</li>
+                <li>Clear error messages for API failures</li>
+                <li>Toast notifications for all AI actions</li>
+                <li>Manual retry capability</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- Settings & Configuration -->
+    <div class="section">
+        <h2>10. Settings & Configuration</h2>
+
+        <h3>Project Settings Page</h3>
+
+        <h3>Project Details Section</h3>
+        <ul>
+            <li><strong>Project Name:</strong> Display name for the project (required)</li>
+            <li><strong>Client Name:</strong> Client or company name (required)</li>
+            <li><strong>Industry:</strong> Dropdown with 21+ industries (expanded from 13)</li>
+            <li><strong>Website:</strong> URL field for project website</li>
+            <li><strong>Currency:</strong> Dropdown with 15+ currencies and symbols</li>
+            <li><strong>Brand Color:</strong> Color picker for dashboard theming</li>
+            <li><strong>Timezone:</strong> Timezone selector for report scheduling</li>
+            <li><strong>Zoho Project ID:</strong> Custom field for Zoho integration</li>
+        </ul>
+
+        <h3>Logo & Branding</h3>
+        <ul>
+            <li>Logo upload interface with file preview</li>
+            <li>Maximum file size: 2MB</li>
+            <li>Supported formats: PNG, JPG, GIF, WebP</li>
+            <li>Used in reports and dashboard header</li>
+            <li>Stores in <code>/public/uploads/</code></li>
+        </ul>
+
+        <h3>Channel Management</h3>
+        <ul>
+            <li>Individual toggle switches for all 21+ channels</li>
+            <li>Enable/disable channels per project</li>
+            <li>Enabled channels show data on dashboard</li>
+            <li>Disabled channels don't fetch data</li>
+            <li>Separate save button for channel changes</li>
+        </ul>
+
+        <h3>Industry Options (21 total)</h3>
+        <p>
+            Technology, Finance, Healthcare, Retail, E-commerce, Education, Real Estate, Hospitality, Food & Beverage, Media & Entertainment, Manufacturing, Construction, Automotive, Consulting, Legal, Marketing & Advertising, Non-Profit, Government, Software as a Service, Insurance, Other
+        </p>
+
+        <h3>Currency Options (15 total)</h3>
+        <p>
+            USD ($), EUR (€), GBP (£), JPY (¥), CAD ($), AUD ($), CHF (Fr), CNY (¥), INR (₹), MXN ($), SGD ($), HKD ($), SEK (kr), NOK (kr), NZD ($)
+        </p>
+    </div>
+
+    <!-- Data Export & Downloads -->
+    <div class="section">
+        <h2>11. Data Export & Downloads</h2>
+
+        <h3>Export Capabilities</h3>
+
+        <h3>HTML Export (Reports)</h3>
+        <ul>
+            <li>Professional formatted document</li>
+            <li>Includes all report sections</li>
+            <li>Print-friendly styling</li>
+            <li>Page breaks for multi-page output</li>
+            <li>Color-coded metrics and trends</li>
+            <li>Ready to print to PDF</li>
+            <li>File naming: <code>report-YYYY-MM-DD.html</code></li>
+        </ul>
+
+        <h3>JSON Export (Reports)</h3>
+        <ul>
+            <li>Structured data format</li>
+            <li>Includes all metrics and summaries</li>
+            <li>Metadata (generation timestamp, channel count)</li>
+            <li>Channel-specific summaries included</li>
+            <li>Easy parsing for integrations</li>
+            <li>File naming: <code>report-YYYY-MM-DD.json</code></li>
+        </ul>
+
+        <h3>Sample Data</h3>
+        <ul>
+            <li>All exports use realistic dummy data with proper trends</li>
+            <li>Data is generated with respect to metric trends</li>
+            <li>Perfect for testing report functionality</li>
+        </ul>
+
+        <h3>Browser Integration</h3>
+        <ul>
+            <li>Download buttons trigger file save dialogs</li>
+            <li>Automatic file naming with timestamps</li>
+            <li>Works in all modern browsers</li>
+            <li>No backend file storage required</li>
+        </ul>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- Technical Stack -->
+    <div class="section">
+        <h2>12. Technical Stack</h2>
+
+        <h3>Frontend Framework</h3>
+        <table>
+            <tr>
+                <th>Technology</th>
+                <th>Version</th>
+                <th>Purpose</th>
+            </tr>
+            <tr>
+                <td>React</td>
+                <td>19</td>
+                <td>UI components and state management</td>
+            </tr>
+            <tr>
+                <td>Next.js</td>
+                <td>15+</td>
+                <td>App router, server components, API routes</td>
+            </tr>
+            <tr>
+                <td>TypeScript</td>
+                <td>5+</td>
+                <td>Type safety and development experience</td>
+            </tr>
+            <tr>
+                <td>Tailwind CSS</td>
+                <td>4</td>
+                <td>Utility-first styling with CSS variables</td>
+            </tr>
+        </table>
+
+        <h3>UI & Visualization</h3>
+        <table>
+            <tr>
+                <th>Library</th>
+                <th>Purpose</th>
+            </tr>
+            <tr>
+                <td>shadcn/ui</td>
+                <td>Reusable UI components (Button, Card, Dialog, etc.)</td>
+            </tr>
+            <tr>
+                <td>Recharts</td>
+                <td>Line charts, bar charts, tooltips</td>
+            </tr>
+            <tr>
+                <td>Lucide Icons</td>
+                <td>SVG icons throughout application</td>
+            </tr>
+            <tr>
+                <td>next-themes</td>
+                <td>Light/dark mode theming</td>
+            </tr>
+            <tr>
+                <td>Sonner</td>
+                <td>Toast notifications</td>
+            </tr>
+        </table>
+
+        <h3>Backend & Database</h3>
+        <table>
+            <tr>
+                <th>Technology</th>
+                <th>Purpose</th>
+            </tr>
+            <tr>
+                <td>Next.js API Routes</td>
+                <td>RESTful API endpoints</td>
+            </tr>
+            <tr>
+                <td>Prisma ORM</td>
+                <td>Database abstraction layer</td>
+            </tr>
+            <tr>
+                <td>SQLite</td>
+                <td>Local database</td>
+            </tr>
+            <tr>
+                <td>NextAuth.js</td>
+                <td>Authentication and session management</td>
+            </tr>
+        </table>
+
+        <h3>AI & APIs</h3>
+        <table>
+            <tr>
+                <th>Service</th>
+                <th>Purpose</th>
+            </tr>
+            <tr>
+                <td>Google Generative AI (Gemini)</td>
+                <td>Primary AI model for insights and analysis</td>
+            </tr>
+            <tr>
+                <td>Anthropic Claude</td>
+                <td>Alternative AI model (optional)</td>
+            </tr>
+            <tr>
+                <td>Google OAuth 2.0</td>
+                <td>Authentication for Google services</td>
+            </tr>
+        </table>
+
+        <h3>Development Tools</h3>
+        <ul>
+            <li><strong>Git:</strong> Version control</li>
+            <li><strong>npm/pnpm:</strong> Package management</li>
+            <li><strong>ESLint:</strong> Code linting</li>
+            <li><strong>Prettier:</strong> Code formatting</li>
+            <li><strong>TypeScript:</strong> Type checking</li>
+        </ul>
+    </div>
+
+    <!-- Feature Specifications -->
+    <div class="section">
+        <h2>13. Feature Specifications</h2>
+
+        <h3>Performance Optimization</h3>
+        <ul>
+            <li>Image optimization enabled in Next.js</li>
+            <li>Local logo serving without external CDN configuration</li>
+            <li>Minimal component re-renders with proper state management</li>
+            <li>Lazy loading for charts and heavy components</li>
+        </ul>
+
+        <h3>Responsive Design</h3>
+        <ul>
+            <li>Mobile-first approach with Tailwind CSS</li>
+            <li>Breakpoints: sm (640px), md (768px), lg (1024px), xl (1280px)</li>
+            <li>Collapsible sidebar on mobile</li>
+            <li>Responsive grid layouts for metrics</li>
+            <li>Touch-friendly buttons and controls</li>
+        </ul>
+
+        <h3>Accessibility</h3>
+        <ul>
+            <li>Semantic HTML structure</li>
+            <li>ARIA labels on interactive elements</li>
+            <li>Keyboard navigation support</li>
+            <li>Color contrast compliance</li>
+            <li>Screen reader friendly</li>
+        </ul>
+
+        <h3>Data Handling</h3>
+        <ul>
+            <li>Client-side filtering of disabled channels</li>
+            <li>Efficient metrics fetching and caching</li>
+            <li>Support for large numbers (formatted K, M notation)</li>
+            <li>Percentage calculations with 1 decimal place</li>
+            <li>Currency symbol support for multiple formats</li>
+        </ul>
+
+        <h3>Error Handling</h3>
+        <ul>
+            <li>Try-catch blocks on all async operations</li>
+            <li>User-friendly error messages</li>
+            <li>Graceful degradation for missing features</li>
+            <li>Loading states for async operations</li>
+            <li>Network error recovery</li>
+        </ul>
+
+        <h3>Security</h3>
+        <ul>
+            <li>Server-side authentication required</li>
+            <li>OAuth 2.0 for third-party integrations</li>
+            <li>API key stored securely in environment variables</li>
+            <li>CORS headers configured appropriately</li>
+            <li>Input validation on forms</li>
+            <li>File upload restrictions (size, type)</li>
+        </ul>
+
+        <h3>Browser Support</h3>
+        <ul>
+            <li>Chrome 90+</li>
+            <li>Firefox 88+</li>
+            <li>Safari 14+</li>
+            <li>Edge 90+</li>
+        </ul>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <h3>Document Summary</h3>
+        <p>
+            <strong>Application:</strong> DM Data Studio v1.0
+            <br><strong>Purpose:</strong> Marketing Analytics & Reporting Platform
+            <br><strong>Total Channels:</strong> 21+
+            <br><strong>Features:</strong> Dashboard, Reports, AI Insights, Data Export
+            <br><strong>Technology:</strong> Next.js 15, React 19, TypeScript, Tailwind CSS, Recharts
+        </p>
+        <p>
+            This documentation provides a comprehensive overview of all features, functionality, and technical specifications of the DM Data Studio application. For implementation details, refer to the source code and API documentation.
+        </p>
+        <p style="margin-top: 30px;">
+            <strong>Generated:</strong> March 2026
+            <br><strong>Version:</strong> 1.0 Complete
+        </p>
+    </div>
+
+</body>
+</html>
