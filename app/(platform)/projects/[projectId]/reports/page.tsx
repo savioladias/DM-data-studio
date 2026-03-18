@@ -557,9 +557,9 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Sidebar - Channel Selection */}
-        <div className="lg:col-span-1 space-y-4 flex flex-col">
+        <div className="lg:col-span-1 space-y-4">
           {/* Date Range */}
           <Card>
             <CardHeader>
@@ -611,7 +611,7 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
           </Card>
 
           {selectedChannels.length > 0 && (
-            <Card className="mt-auto">
+            <Card>
               <CardHeader>
                 <CardTitle className="text-sm">Export Report</CardTitle>
               </CardHeader>
@@ -638,7 +638,7 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
         </div>
 
         {/* Main Content - Report Builder */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="lg:col-span-3 space-y-6">
           {/* Executive Summary */}
           <Card>
             <CardHeader>
