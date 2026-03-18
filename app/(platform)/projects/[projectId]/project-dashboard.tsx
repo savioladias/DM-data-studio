@@ -143,10 +143,10 @@ export function ProjectDashboard({ project, enabledChannels, recentInsights }: P
             return channel ? (
               <Badge
                 key={channelId}
-                className="text-xs gap-1.5 bg-white border border-black text-black"
+                className="text-sm gap-2 bg-white border border-black text-black px-3 py-2"
               >
                 <div
-                  className="h-3 w-3 rounded-sm flex items-center justify-center text-white text-[9px] font-semibold flex-shrink-0"
+                  className="h-4 w-4 rounded-sm flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0"
                   style={{ backgroundColor: channel.color }}
                   title={channel.label}
                 >
@@ -175,7 +175,7 @@ export function ProjectDashboard({ project, enabledChannels, recentInsights }: P
                   <TrendingUp className="h-4 w-4 text-primary" />
                   Overall Performance
                 </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Connected Channels</p>
                     <p className="text-2xl font-bold">{connectedChannels}</p>

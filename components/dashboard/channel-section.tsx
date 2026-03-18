@@ -7,13 +7,11 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { KpiCard } from './kpi-card'
-import { MetricSortControls } from './metric-sort-controls'
 import { CsvUploadButton } from './csv-upload-button'
 import { Sparkles, Loader2, ChevronDown, ChevronUp, Circle, ArrowRight } from 'lucide-react'
 import { getChannel } from '@/lib/channels'
 import type { ChannelId } from '@/lib/channels'
 import type { Metric, DateRange } from '@/lib/types'
-import { loadMetricPrefs, saveMetricPrefs, sortMetrics, type MetricPrefs } from '@/lib/metric-prefs'
 
 function getDateRangeLabel(dateRange: DateRange): string {
   switch (dateRange.preset) {
@@ -46,21 +44,10 @@ export function ChannelSection({ projectId, channelId, metrics, dateRange }: Cha
   const [summaryOpen, setSummaryOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [aiAvailable, setAiAvailable] = useState(true)
-  const [sortPrefs, setSortPrefs] = useState<MetricPrefs>(() => loadMetricPrefs(projectId))
-
-  useEffect(() => {
-    setSortPrefs(loadMetricPrefs(projectId))
-  }, [projectId])
-
-  const handleSortChange = (prefs: MetricPrefs) => {
-    setSortPrefs(prefs)
-    saveMetricPrefs(projectId, prefs)
-  }
 
   if (!channel) return null
 
   const dateRangeLabel = dateRange ? getDateRangeLabel(dateRange) : 'Last 30 days'
-  const sortedMetrics = sortMetrics(metrics, sortPrefs)
 
   const fetchSummary = async () => {
     if (aiSummary) {
@@ -191,14 +178,11 @@ export function ChannelSection({ projectId, channelId, metrics, dateRange }: Cha
         </Card>
       )}
 
-      {/* Sort Controls and KPI grid */}
+      {/* KPI grid */}
       {!collapsed && (
         <div className="space-y-3">
-          <div>
-            <MetricSortControls prefs={sortPrefs} onChange={handleSortChange} />
-          </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {sortedMetrics.map(metric => (
+            {metrics.map(metric => (
               <KpiCard
                 key={metric.key}
                 projectId={projectId}

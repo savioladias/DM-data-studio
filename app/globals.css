@@ -123,4 +123,67 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Typography Scale */
+  h1 {
+    @apply text-3xl font-bold tracking-tight mb-6;
+  }
+
+  h2 {
+    @apply text-2xl font-semibold tracking-tight mb-5;
+  }
+
+  h3 {
+    @apply text-xl font-semibold tracking-tight mb-4;
+  }
+
+  h4 {
+    @apply text-lg font-semibold tracking-tight mb-3;
+  }
+
+  h5 {
+    @apply text-base font-semibold tracking-tight mb-2;
+  }
+
+  .subheading {
+    @apply text-sm font-medium text-muted-foreground tracking-wide mb-3;
+  }
+
+  p {
+    @apply text-base leading-relaxed mb-4;
+  }
+
+  small {
+    @apply text-xs text-muted-foreground;
+  }
+
+  /* Spacing utility classes */
+  .spacing-xs {
+    @apply gap-2;
+  }
+
+  .spacing-sm {
+    @apply gap-3;
+  }
+
+  .spacing-md {
+    @apply gap-4;
+  }
+
+  .spacing-lg {
+    @apply gap-6;
+  }
+
+  .spacing-xl {
+    @apply gap-8;
+  }
+
+  /* Card spacing */
+  .card-spacing {
+    @apply space-y-4;
+  }
+
+  .card-spacing-large {
+    @apply space-y-6;
+  }
 }
