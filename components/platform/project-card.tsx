@@ -21,11 +21,6 @@ interface ProjectCardProps {
   }
 }
 
-const getChannelIcon = (channelLabel: string): string => {
-  const firstLetter = channelLabel.split(' ')[0].charAt(0).toUpperCase()
-  return firstLetter
-}
-
 export function ProjectCard({ project }: ProjectCardProps) {
   const channels = project.channels
     .map(c => getChannel(c.channel as ChannelId))
@@ -43,19 +38,19 @@ export function ProjectCard({ project }: ProjectCardProps) {
   return (
     <Link href={`/projects/${project.id}`}>
       <Card className="group relative hover:shadow-lg transition-all duration-200 cursor-pointer h-full flex flex-col overflow-hidden">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-4">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <ProjectAvatar
                 logoUrl={project.logoUrl}
                 clientName={project.clientName}
-                size="md"
+                size="lg"
               />
               <div>
-                <h3 className="font-semibold text-sm group-hover:text-primary transition-colors">
+                <h3 className="font-semibold text-base group-hover:text-primary transition-colors">
                   {project.name}
                 </h3>
-                <p className="text-xs text-muted-foreground">{project.clientName}</p>
+                <p className="text-sm text-muted-foreground">{project.clientName}</p>
               </div>
             </div>
             <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-all duration-200 flex-shrink-0 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
@@ -71,24 +66,17 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
           {/* Channel pills - max 4 + "+X more" */}
           {channels.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               {visibleChannels.map(c => (
                 <span
                   key={c!.id}
-                  className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-muted hover:bg-muted/80 transition-colors"
+                  className="inline-flex text-xs px-3 py-1.5 rounded-full bg-muted hover:bg-muted/80 transition-colors"
                 >
-                  <div
-                    className="h-3 w-3 rounded-sm flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0"
-                    style={{ backgroundColor: c!.color }}
-                    title={c!.label}
-                  >
-                    {getChannelIcon(c!.label)}
-                  </div>
-                  <span className="truncate">{c!.label}</span>
+                  {c!.label}
                 </span>
               ))}
               {hiddenChannelsCount > 0 && (
-                <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-muted/50 border border-border/50 text-muted-foreground">
+                <span className="inline-flex text-xs px-3 py-1.5 rounded-full bg-muted/50 border border-border/50 text-muted-foreground">
                   +{hiddenChannelsCount} more
                 </span>
               )}
