@@ -12,7 +12,6 @@ export default async function ProjectsHomePage() {
 
   const projects = await db.project.findMany({
     where: { userId: session.user.id },
-    include: { channels: { where: { enabled: true } } },
     orderBy: { updatedAt: 'desc' },
     select: {
       id: true,
