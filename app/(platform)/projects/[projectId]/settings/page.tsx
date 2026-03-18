@@ -241,7 +241,6 @@ export default function ProjectSettingsPage() {
                     variant="outline"
                     size="sm"
                     disabled={uploadingLogo}
-                    asChild
                   >
                     {uploadingLogo ? (
                       <>
