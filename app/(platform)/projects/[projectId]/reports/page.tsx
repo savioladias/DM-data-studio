@@ -183,7 +183,7 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
       const positiveMetrics = selectedData.reduce((sum, c) => sum + c.metrics.filter(m => m.trend === 'up').length, 0)
       const negativeMetrics = selectedData.reduce((sum, c) => sum + c.metrics.filter(m => m.trend === 'down').length, 0)
 
-      // Create HTML content for PDF
+      // Create simple HTML content without Recharts components
       const htmlContent = document.createElement('div')
       htmlContent.style.padding = '40px'
       htmlContent.style.fontFamily = "'Segoe UI', Arial, sans-serif"
@@ -192,72 +192,72 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
       htmlContent.innerHTML = `
         <div style="max-width: 1000px; margin: 0 auto;">
           <!-- Header -->
-          <div style="text-align: center; margin-bottom: 40px; border-bottom: 3px solid #0084ff; padding-bottom: 30px;">
-            <h1 style="margin: 0 0 10px 0; font-size: 32px; color: #1a1a1a;">Marketing Performance Report</h1>
-            <p style="color: #666; font-size: 14px; margin: 10px 0;">Generated on ${today}</p>
-            <p style="color: #666; margin: 15px 0 0 0;"><strong>${projectData?.clientName || 'Project'}</strong></p>
-            <p style="color: #999; font-size: 13px; margin: 5px 0 0 0;">Date Range: ${startDate || 'N/A'} to ${endDate || 'N/A'}</p>
-            <p style="color: #666; margin: 15px 0 0 0;">${selectedData.length} channel${selectedData.length !== 1 ? 's' : ''} | ${totalMetrics} total metrics</p>
+          <div style="text-align: center; margin-bottom: 40px; border-bottom: 3px solid rgb(0, 132, 255); padding-bottom: 30px;">
+            <h1 style="margin: 0 0 10px 0; font-size: 32px; color: rgb(26, 26, 26);">Marketing Performance Report</h1>
+            <p style="color: rgb(102, 102, 102); font-size: 14px; margin: 10px 0;">Generated on ${today}</p>
+            <p style="color: rgb(102, 102, 102); margin: 15px 0 0 0;"><strong>${projectData?.clientName || 'Project'}</strong></p>
+            <p style="color: rgb(153, 153, 153); font-size: 13px; margin: 5px 0 0 0;">Date Range: ${startDate || 'N/A'} to ${endDate || 'N/A'}</p>
+            <p style="color: rgb(102, 102, 102); margin: 15px 0 0 0;">${selectedData.length} channel${selectedData.length !== 1 ? 's' : ''} | ${totalMetrics} total metrics</p>
           </div>
 
           <!-- Executive Summary -->
-          <div style="background: #f0f7ff; padding: 20px; border-left: 4px solid #0084ff; margin: 30px 0; border-radius: 4px;">
-            <h3 style="margin-top: 0; color: #0084ff;">Executive Summary</h3>
-            <p style="color: #333; line-height: 1.6;">${executiveSummary || 'Overview of marketing performance across selected channels. Key highlights and trends are detailed in the channel-specific sections below.'}</p>
+          <div style="background: rgb(240, 247, 255); padding: 20px; border-left: 4px solid rgb(0, 132, 255); margin: 30px 0; border-radius: 4px;">
+            <h3 style="margin-top: 0; color: rgb(0, 132, 255);">Executive Summary</h3>
+            <p style="color: rgb(51, 51, 51); line-height: 1.6;">${executiveSummary || 'Overview of marketing performance across selected channels. Key highlights and trends are detailed in the channel-specific sections below.'}</p>
           </div>
 
           <!-- Key Metrics Grid -->
           <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 30px 0;">
-            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #ddd;">
-              <div style="font-size: 32px; font-weight: bold; color: #0084ff;">${totalMetrics}</div>
-              <div style="font-size: 12px; color: #666; text-transform: uppercase; margin-top: 10px;">Total Metrics</div>
+            <div style="background: rgb(249, 249, 249); padding: 20px; border-radius: 8px; text-align: center; border: 1px solid rgb(221, 221, 221);">
+              <div style="font-size: 32px; font-weight: bold; color: rgb(0, 132, 255);">${totalMetrics}</div>
+              <div style="font-size: 12px; color: rgb(102, 102, 102); text-transform: uppercase; margin-top: 10px;">Total Metrics</div>
             </div>
-            <div style="background: #f0fff4; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #c6f6d5;">
-              <div style="font-size: 32px; font-weight: bold; color: #10b981;">${positiveMetrics}</div>
-              <div style="font-size: 12px; color: #666; text-transform: uppercase; margin-top: 10px;">Positive Trends</div>
+            <div style="background: rgb(240, 255, 244); padding: 20px; border-radius: 8px; text-align: center; border: 1px solid rgb(198, 246, 213);">
+              <div style="font-size: 32px; font-weight: bold; color: rgb(16, 185, 129);">${positiveMetrics}</div>
+              <div style="font-size: 12px; color: rgb(102, 102, 102); text-transform: uppercase; margin-top: 10px;">Positive Trends</div>
             </div>
-            <div style="background: #fff5f5; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #fed7d7;">
-              <div style="font-size: 32px; font-weight: bold; color: #ef4444;">${negativeMetrics}</div>
-              <div style="font-size: 12px; color: #666; text-transform: uppercase; margin-top: 10px;">Areas of Concern</div>
+            <div style="background: rgb(255, 245, 245); padding: 20px; border-radius: 8px; text-align: center; border: 1px solid rgb(254, 215, 215);">
+              <div style="font-size: 32px; font-weight: bold; color: rgb(239, 68, 68);">${negativeMetrics}</div>
+              <div style="font-size: 12px; color: rgb(102, 102, 102); text-transform: uppercase; margin-top: 10px;">Areas of Concern</div>
             </div>
-            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #ddd;">
-              <div style="font-size: 32px; font-weight: bold; color: #666;">${totalMetrics - positiveMetrics - negativeMetrics}</div>
-              <div style="font-size: 12px; color: #666; text-transform: uppercase; margin-top: 10px;">Stable Metrics</div>
+            <div style="background: rgb(249, 249, 249); padding: 20px; border-radius: 8px; text-align: center; border: 1px solid rgb(221, 221, 221);">
+              <div style="font-size: 32px; font-weight: bold; color: rgb(102, 102, 102);">${totalMetrics - positiveMetrics - negativeMetrics}</div>
+              <div style="font-size: 12px; color: rgb(102, 102, 102); text-transform: uppercase; margin-top: 10px;">Stable Metrics</div>
             </div>
           </div>
 
           <!-- Channel Details -->
-          <h2 style="font-size: 20px; font-weight: bold; margin: 40px 0 20px 0; color: #1a1a1a; border-bottom: 2px solid #0084ff; padding-bottom: 10px;">Channel Performance Details</h2>
+          <h2 style="font-size: 20px; font-weight: bold; margin: 40px 0 20px 0; color: rgb(26, 26, 26); border-bottom: 2px solid rgb(0, 132, 255); padding-bottom: 10px;">Channel Performance Details</h2>
 
           ${selectedData.map((channel) => {
             const positiveCount = channel.metrics.filter(m => m.trend === 'up').length
             const negativeCount = channel.metrics.filter(m => m.trend === 'down').length
 
             return `
-              <div style="margin: 40px 0; padding: 30px; background: #f9f9f9; border-radius: 8px; border: 1px solid #ddd; page-break-inside: avoid;">
-                <h3 style="margin-top: 0; color: #1a1a1a; border-bottom: 2px solid #0084ff; padding-bottom: 10px;">${channel.label}</h3>
-                <p style="color: #666; margin: 10px 0 0 0;">${channel.metrics.length} metrics | ${positiveCount} positive · ${negativeCount} declining</p>
+              <div style="margin: 40px 0; padding: 30px; background: rgb(249, 249, 249); border-radius: 8px; border: 1px solid rgb(221, 221, 221); page-break-inside: avoid;">
+                <h3 style="margin-top: 0; color: rgb(26, 26, 26); border-bottom: 2px solid rgb(0, 132, 255); padding-bottom: 10px;">${channel.label}</h3>
+                <p style="color: rgb(102, 102, 102); margin: 10px 0 0 0;">${channel.metrics.length} metrics | ${positiveCount} positive · ${negativeCount} declining</p>
 
                 <!-- Metrics Table -->
                 <div style="margin: 20px 0;">
                   <h4 style="margin: 20px 0 10px 0;">Performance Metrics</h4>
                   <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
                     <thead>
-                      <tr style="background: #f0f0f0;">
-                        <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #ddd;">Metric</th>
-                        <th style="padding: 12px; text-align: right; font-weight: 600; border-bottom: 2px solid #ddd;">Current Value</th>
-                        <th style="padding: 12px; text-align: center; font-weight: 600; border-bottom: 2px solid #ddd;">Trend</th>
-                        <th style="padding: 12px; text-align: right; font-weight: 600; border-bottom: 2px solid #ddd;">Previous Value</th>
-                        <th style="padding: 12px; text-align: right; font-weight: 600; border-bottom: 2px solid #ddd;">Change</th>
+                      <tr style="background: rgb(240, 240, 240);">
+                        <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid rgb(221, 221, 221);">Metric</th>
+                        <th style="padding: 12px; text-align: right; font-weight: 600; border-bottom: 2px solid rgb(221, 221, 221);">Current Value</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600; border-bottom: 2px solid rgb(221, 221, 221);">Trend</th>
+                        <th style="padding: 12px; text-align: right; font-weight: 600; border-bottom: 2px solid rgb(221, 221, 221);">Previous Value</th>
+                        <th style="padding: 12px; text-align: right; font-weight: 600; border-bottom: 2px solid rgb(221, 221, 221);">Change</th>
                       </tr>
                     </thead>
                     <tbody>
                       ${channel.metrics.map(metric => {
                         const trendEmoji = metric.trend === 'up' ? '↑' : metric.trend === 'down' ? '↓' : '—'
-                        const trendColor = metric.trend === 'up' ? '#10b981' : metric.trend === 'down' ? '#ef4444' : '#666'
-                        const changeColor = metric.deltaPercent && metric.deltaPercent < 0 ? '#ef4444' : metric.deltaPercent && metric.deltaPercent > 0 ? '#10b981' : '#666'
+                        const trendColor = metric.trend === 'up' ? 'rgb(16, 185, 129)' : metric.trend === 'down' ? 'rgb(239, 68, 68)' : 'rgb(102, 102, 102)'
+                        const changeColor = metric.deltaPercent && metric.deltaPercent < 0 ? 'rgb(239, 68, 68)' : metric.deltaPercent && metric.deltaPercent > 0 ? 'rgb(16, 185, 129)' : 'rgb(102, 102, 102)'
                         return `
-                          <tr style="border-bottom: 1px solid #eee;">
+                          <tr style="border-bottom: 1px solid rgb(238, 238, 238);">
                             <td style="padding: 12px;"><strong>${metric.label}</strong></td>
                             <td style="padding: 12px; text-align: right;"><strong>${formatValue(metric.value)}</strong> ${metric.unit}</td>
                             <td style="padding: 12px; text-align: center; color: ${trendColor}; font-weight: bold;">${trendEmoji}</td>
@@ -271,9 +271,9 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                 </div>
 
                 ${channelSummaries[channel.channel] ? `
-                  <div style="margin: 20px 0; padding: 15px; background: #f0f7ff; border-left: 3px solid #0084ff; border-radius: 4px;">
-                    <h4 style="margin-top: 0; color: #0084ff;">Analysis & Summary</h4>
-                    <p style="color: #333; line-height: 1.6;">${channelSummaries[channel.channel].replace(/\n/g, '<br>')}</p>
+                  <div style="margin: 20px 0; padding: 15px; background: rgb(240, 247, 255); border-left: 3px solid rgb(0, 132, 255); border-radius: 4px;">
+                    <h4 style="margin-top: 0; color: rgb(0, 132, 255);">Analysis & Summary</h4>
+                    <p style="color: rgb(51, 51, 51); line-height: 1.6;">${channelSummaries[channel.channel].replace(/\n/g, '<br>')}</p>
                   </div>
                 ` : ''}
               </div>
@@ -282,14 +282,14 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
 
           <!-- Conclusions -->
           ${conclusions ? `
-            <div style="background: #f0f9ff; padding: 20px; border-left: 4px solid #0284c7; margin: 30px 0; border-radius: 4px;">
-              <h3 style="margin-top: 0; color: #0284c7;">Conclusions & Recommendations</h3>
-              <p style="color: #333; line-height: 1.6;">${conclusions}</p>
+            <div style="background: rgb(240, 249, 255); padding: 20px; border-left: 4px solid rgb(2, 132, 199); margin: 30px 0; border-radius: 4px;">
+              <h3 style="margin-top: 0; color: rgb(2, 132, 199);">Conclusions & Recommendations</h3>
+              <p style="color: rgb(51, 51, 51); line-height: 1.6;">${conclusions}</p>
             </div>
           ` : ''}
 
           <!-- Footer -->
-          <div style="margin-top: 60px; padding-top: 20px; border-top: 2px solid #ddd; font-size: 11px; color: #999; text-align: center;">
+          <div style="margin-top: 60px; padding-top: 20px; border-top: 2px solid rgb(221, 221, 221); font-size: 11px; color: rgb(153, 153, 153); text-align: center;">
             <p>This report contains performance metrics from selected marketing channels. Data is accurate as of ${today}.</p>
             <p>For detailed analysis or questions, please contact your marketing team.</p>
           </div>
@@ -304,17 +304,6 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
         logging: false,
         backgroundColor: '#ffffff',
         allowTaint: true,
-        onclone: (clonedDocument) => {
-          // Remove or replace unsupported color functions
-          const styles = clonedDocument.querySelectorAll('[style]')
-          styles.forEach((el) => {
-            const style = el.getAttribute('style')
-            if (style && style.includes('lab(')) {
-              const newStyle = style.replace(/lab\([^)]+\)/g, '#0084ff')
-              el.setAttribute('style', newStyle)
-            }
-          })
-        },
       })
       document.body.removeChild(htmlContent)
 
