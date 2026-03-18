@@ -141,6 +141,7 @@ export function ChannelSection({ projectId, channelId, metrics, dateRange }: Cha
         <div className="flex items-center gap-2">
           <Link href={`/projects/${projectId}/channels/${channelId}`}>
             <Button
+              variant="outline"
               size="sm"
               className="text-xs gap-1.5"
             >

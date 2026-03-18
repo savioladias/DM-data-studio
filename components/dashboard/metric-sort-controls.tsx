@@ -9,8 +9,6 @@ interface MetricSortControlsProps {
 }
 
 const SORT_OPTIONS: { key: SortKey; dir: SortDir; label: string }[] = [
-  { key: 'value', dir: 'desc', label: 'Value (High to Low)' },
-  { key: 'value', dir: 'asc', label: 'Value (Low to High)' },
   { key: 'trend', dir: 'desc', label: 'Trend (Best First)' },
   { key: 'trend', dir: 'asc', label: 'Trend (Worst First)' },
   { key: 'delta', dir: 'desc', label: 'Change % (Highest)' },
@@ -21,7 +19,7 @@ const SORT_OPTIONS: { key: SortKey; dir: SortDir; label: string }[] = [
 
 export function MetricSortControls({ prefs, onChange }: MetricSortControlsProps) {
   const currentOption = SORT_OPTIONS.find(opt => opt.key === prefs.sortKey && opt.dir === prefs.sortDir)
-  const currentValue = currentOption ? `${currentOption.key}-${currentOption.dir}` : 'value-desc'
+  const currentValue = currentOption ? `${currentOption.key}-${currentOption.dir}` : 'trend-desc'
 
   const handleChange = (value: string) => {
     const [key, dir] = value.split('-') as [SortKey, SortDir]

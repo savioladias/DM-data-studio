@@ -143,8 +143,7 @@ export function ProjectDashboard({ project, enabledChannels, recentInsights }: P
             return channel ? (
               <Badge
                 key={channelId}
-                variant="default"
-                className="text-xs gap-1.5"
+                className="text-xs gap-1.5 bg-white border border-black text-black"
               >
                 <div
                   className="h-3 w-3 rounded-sm flex items-center justify-center text-white text-[9px] font-semibold flex-shrink-0"
