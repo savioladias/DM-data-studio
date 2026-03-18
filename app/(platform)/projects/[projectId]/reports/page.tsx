@@ -12,7 +12,6 @@ import { getChannel } from '@/lib/channels'
 import type { ChannelId } from '@/lib/channels'
 import { toast } from 'sonner'
 import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
 
 interface ReportMetrics {
   channel: ChannelId
@@ -169,164 +168,199 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
     }
   }
 
-  const exportAsPDF = async () => {
+  const exportAsPDF = () => {
     if (selectedChannels.length === 0) {
       toast.error('Select at least one channel to export')
       return
     }
 
-    setExporting(true)
     try {
-      const selectedData = metrics.filter(m => selectedChannels.includes(m.channel))
+      const selectedDataList = metrics.filter(m => selectedChannels.includes(m.channel))
       const today = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })
-      const totalMetrics = selectedData.reduce((sum, c) => sum + c.metrics.length, 0)
-      const positiveMetrics = selectedData.reduce((sum, c) => sum + c.metrics.filter(m => m.trend === 'up').length, 0)
-      const negativeMetrics = selectedData.reduce((sum, c) => sum + c.metrics.filter(m => m.trend === 'down').length, 0)
+      const totalMetricsCount = selectedDataList.reduce((sum, c) => sum + c.metrics.length, 0)
+      const positiveMetricsCount = selectedDataList.reduce((sum, c) => sum + c.metrics.filter(m => m.trend === 'up').length, 0)
+      const negativeMetricsCount = selectedDataList.reduce((sum, c) => sum + c.metrics.filter(m => m.trend === 'down').length, 0)
 
-      // Create simple HTML content without Recharts components
-      const htmlContent = document.createElement('div')
-      htmlContent.style.padding = '40px'
-      htmlContent.style.fontFamily = "'Segoe UI', Arial, sans-serif"
-      htmlContent.style.backgroundColor = 'white'
-      htmlContent.style.width = '1200px'
-      htmlContent.innerHTML = `
-        <div style="max-width: 1000px; margin: 0 auto;">
-          <!-- Header -->
-          <div style="text-align: center; margin-bottom: 40px; border-bottom: 3px solid rgb(0, 132, 255); padding-bottom: 30px;">
-            <h1 style="margin: 0 0 10px 0; font-size: 32px; color: rgb(26, 26, 26);">Marketing Performance Report</h1>
-            <p style="color: rgb(102, 102, 102); font-size: 14px; margin: 10px 0;">Generated on ${today}</p>
-            <p style="color: rgb(102, 102, 102); margin: 15px 0 0 0;"><strong>${projectData?.clientName || 'Project'}</strong></p>
-            <p style="color: rgb(153, 153, 153); font-size: 13px; margin: 5px 0 0 0;">Date Range: ${startDate || 'N/A'} to ${endDate || 'N/A'}</p>
-            <p style="color: rgb(102, 102, 102); margin: 15px 0 0 0;">${selectedData.length} channel${selectedData.length !== 1 ? 's' : ''} | ${totalMetrics} total metrics</p>
-          </div>
-
-          <!-- Executive Summary -->
-          <div style="background: rgb(240, 247, 255); padding: 20px; border-left: 4px solid rgb(0, 132, 255); margin: 30px 0; border-radius: 4px;">
-            <h3 style="margin-top: 0; color: rgb(0, 132, 255);">Executive Summary</h3>
-            <p style="color: rgb(51, 51, 51); line-height: 1.6;">${executiveSummary || 'Overview of marketing performance across selected channels. Key highlights and trends are detailed in the channel-specific sections below.'}</p>
-          </div>
-
-          <!-- Key Metrics Grid -->
-          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 30px 0;">
-            <div style="background: rgb(249, 249, 249); padding: 20px; border-radius: 8px; text-align: center; border: 1px solid rgb(221, 221, 221);">
-              <div style="font-size: 32px; font-weight: bold; color: rgb(0, 132, 255);">${totalMetrics}</div>
-              <div style="font-size: 12px; color: rgb(102, 102, 102); text-transform: uppercase; margin-top: 10px;">Total Metrics</div>
-            </div>
-            <div style="background: rgb(240, 255, 244); padding: 20px; border-radius: 8px; text-align: center; border: 1px solid rgb(198, 246, 213);">
-              <div style="font-size: 32px; font-weight: bold; color: rgb(16, 185, 129);">${positiveMetrics}</div>
-              <div style="font-size: 12px; color: rgb(102, 102, 102); text-transform: uppercase; margin-top: 10px;">Positive Trends</div>
-            </div>
-            <div style="background: rgb(255, 245, 245); padding: 20px; border-radius: 8px; text-align: center; border: 1px solid rgb(254, 215, 215);">
-              <div style="font-size: 32px; font-weight: bold; color: rgb(239, 68, 68);">${negativeMetrics}</div>
-              <div style="font-size: 12px; color: rgb(102, 102, 102); text-transform: uppercase; margin-top: 10px;">Areas of Concern</div>
-            </div>
-            <div style="background: rgb(249, 249, 249); padding: 20px; border-radius: 8px; text-align: center; border: 1px solid rgb(221, 221, 221);">
-              <div style="font-size: 32px; font-weight: bold; color: rgb(102, 102, 102);">${totalMetrics - positiveMetrics - negativeMetrics}</div>
-              <div style="font-size: 12px; color: rgb(102, 102, 102); text-transform: uppercase; margin-top: 10px;">Stable Metrics</div>
-            </div>
-          </div>
-
-          <!-- Channel Details -->
-          <h2 style="font-size: 20px; font-weight: bold; margin: 40px 0 20px 0; color: rgb(26, 26, 26); border-bottom: 2px solid rgb(0, 132, 255); padding-bottom: 10px;">Channel Performance Details</h2>
-
-          ${selectedData.map((channel) => {
-            const positiveCount = channel.metrics.filter(m => m.trend === 'up').length
-            const negativeCount = channel.metrics.filter(m => m.trend === 'down').length
-
-            return `
-              <div style="margin: 40px 0; padding: 30px; background: rgb(249, 249, 249); border-radius: 8px; border: 1px solid rgb(221, 221, 221); page-break-inside: avoid;">
-                <h3 style="margin-top: 0; color: rgb(26, 26, 26); border-bottom: 2px solid rgb(0, 132, 255); padding-bottom: 10px;">${channel.label}</h3>
-                <p style="color: rgb(102, 102, 102); margin: 10px 0 0 0;">${channel.metrics.length} metrics | ${positiveCount} positive · ${negativeCount} declining</p>
-
-                <!-- Metrics Table -->
-                <div style="margin: 20px 0;">
-                  <h4 style="margin: 20px 0 10px 0;">Performance Metrics</h4>
-                  <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-                    <thead>
-                      <tr style="background: rgb(240, 240, 240);">
-                        <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid rgb(221, 221, 221);">Metric</th>
-                        <th style="padding: 12px; text-align: right; font-weight: 600; border-bottom: 2px solid rgb(221, 221, 221);">Current Value</th>
-                        <th style="padding: 12px; text-align: center; font-weight: 600; border-bottom: 2px solid rgb(221, 221, 221);">Trend</th>
-                        <th style="padding: 12px; text-align: right; font-weight: 600; border-bottom: 2px solid rgb(221, 221, 221);">Previous Value</th>
-                        <th style="padding: 12px; text-align: right; font-weight: 600; border-bottom: 2px solid rgb(221, 221, 221);">Change</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${channel.metrics.map(metric => {
-                        const trendEmoji = metric.trend === 'up' ? '↑' : metric.trend === 'down' ? '↓' : '—'
-                        const trendColor = metric.trend === 'up' ? 'rgb(16, 185, 129)' : metric.trend === 'down' ? 'rgb(239, 68, 68)' : 'rgb(102, 102, 102)'
-                        const changeColor = metric.deltaPercent && metric.deltaPercent < 0 ? 'rgb(239, 68, 68)' : metric.deltaPercent && metric.deltaPercent > 0 ? 'rgb(16, 185, 129)' : 'rgb(102, 102, 102)'
-                        return `
-                          <tr style="border-bottom: 1px solid rgb(238, 238, 238);">
-                            <td style="padding: 12px;"><strong>${metric.label}</strong></td>
-                            <td style="padding: 12px; text-align: right;"><strong>${formatValue(metric.value)}</strong> ${metric.unit}</td>
-                            <td style="padding: 12px; text-align: center; color: ${trendColor}; font-weight: bold;">${trendEmoji}</td>
-                            <td style="padding: 12px; text-align: right;">${metric.previous ? formatValue(metric.previous) : '—'}</td>
-                            <td style="padding: 12px; text-align: right; color: ${changeColor}; font-weight: bold;">${metric.deltaPercent ? (metric.deltaPercent > 0 ? '+' : '') + metric.deltaPercent.toFixed(1) + '%' : '—'}</td>
-                          </tr>
-                        `
-                      }).join('')}
-                    </tbody>
-                  </table>
-                </div>
-
-                ${channelSummaries[channel.channel] ? `
-                  <div style="margin: 20px 0; padding: 15px; background: rgb(240, 247, 255); border-left: 3px solid rgb(0, 132, 255); border-radius: 4px;">
-                    <h4 style="margin-top: 0; color: rgb(0, 132, 255);">Analysis & Summary</h4>
-                    <p style="color: rgb(51, 51, 51); line-height: 1.6;">${channelSummaries[channel.channel].replace(/\n/g, '<br>')}</p>
-                  </div>
-                ` : ''}
-              </div>
-            `
-          }).join('')}
-
-          <!-- Conclusions -->
-          ${conclusions ? `
-            <div style="background: rgb(240, 249, 255); padding: 20px; border-left: 4px solid rgb(2, 132, 199); margin: 30px 0; border-radius: 4px;">
-              <h3 style="margin-top: 0; color: rgb(2, 132, 199);">Conclusions & Recommendations</h3>
-              <p style="color: rgb(51, 51, 51); line-height: 1.6;">${conclusions}</p>
-            </div>
-          ` : ''}
-
-          <!-- Footer -->
-          <div style="margin-top: 60px; padding-top: 20px; border-top: 2px solid rgb(221, 221, 221); font-size: 11px; color: rgb(153, 153, 153); text-align: center;">
-            <p>This report contains performance metrics from selected marketing channels. Data is accurate as of ${today}.</p>
-            <p>For detailed analysis or questions, please contact your marketing team.</p>
-          </div>
-        </div>
-      `
-
-      // Render to canvas and convert to PDF
-      document.body.appendChild(htmlContent)
-      const canvas = await html2canvas(htmlContent, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        allowTaint: true,
-      })
-      document.body.removeChild(htmlContent)
-
-      const imgData = canvas.toDataURL('image/png')
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
       })
 
-      const imgWidth = 210 // A4 width in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-      let heightLeft = imgHeight
-      let position = 0
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 15
+      const contentWidth = pageWidth - 2 * margin
+      let yPosition = margin
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-      heightLeft -= 297 // A4 height in mm
+      // Helper to check if we need new page
+      const checkNewPage = (spaceNeeded: number) => {
+        if (yPosition + spaceNeeded > pageHeight - margin) {
+          pdf.addPage()
+          yPosition = margin
+        }
+      }
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight
-        pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-        heightLeft -= 297
+      // Header
+      pdf.setFontSize(18)
+      pdf.setTextColor(26, 26, 26)
+      pdf.setFont(undefined, 'bold')
+      pdf.text('Marketing Performance Report', margin, yPosition)
+      yPosition += 10
+
+      pdf.setFontSize(10)
+      pdf.setTextColor(102, 102, 102)
+      pdf.setFont(undefined, 'normal')
+      pdf.text(`Generated on ${today}` || '', margin, yPosition)
+      yPosition += 6
+
+      pdf.setFontSize(11)
+      pdf.setTextColor(102, 102, 102)
+      pdf.setFont(undefined, 'bold')
+      pdf.text((projectData?.clientName ?? 'Project') || '', margin, yPosition)
+      yPosition += 6
+
+      pdf.setFontSize(9)
+      pdf.setTextColor(153, 153, 153)
+      pdf.setFont(undefined, 'normal')
+      pdf.text(`Date Range: ${startDate ?? 'N/A'} to ${endDate ?? 'N/A'}` || '', margin, yPosition)
+      yPosition += 6
+
+      pdf.setTextColor(102, 102, 102)
+      pdf.text(`${selectedDataList.length} channel${selectedDataList.length !== 1 ? 's' : ''} | ${totalMetricsCount} total metrics` || '', margin, yPosition)
+      yPosition += 10
+
+      // Executive Summary
+      checkNewPage(20)
+      pdf.setFillColor(240, 247, 255)
+      pdf.rect(margin, yPosition, contentWidth, 15, 'F')
+      pdf.setFontSize(11)
+      pdf.setTextColor(0, 132, 255)
+      pdf.setFont(undefined, 'bold')
+      pdf.text('Executive Summary', margin + 2, yPosition + 4)
+      yPosition += 6
+
+      pdf.setFontSize(9)
+      pdf.setTextColor(51, 51, 51)
+      pdf.setFont(undefined, 'normal')
+      const summaryText = pdf.splitTextToSize(
+        executiveSummary || 'Overview of marketing performance across selected channels.',
+        contentWidth - 4
+      )
+      pdf.text(summaryText, margin + 2, yPosition)
+      yPosition += summaryText.length * 4 + 8
+
+      // Key Metrics
+      checkNewPage(20)
+      const metricsArray = [
+        { label: 'Total Metrics', value: totalMetricsCount, color: [0, 132, 255] as [number, number, number] },
+        { label: 'Positive Trends', value: positiveMetricsCount, color: [16, 185, 129] as [number, number, number] },
+        { label: 'Areas of Concern', value: negativeMetricsCount, color: [239, 68, 68] as [number, number, number] },
+        { label: 'Stable Metrics', value: totalMetricsCount - positiveMetricsCount - negativeMetricsCount, color: [102, 102, 102] as [number, number, number] },
+      ]
+
+      const boxWidth = (contentWidth - 6) / 4
+      let xPos = margin
+      metricsArray.forEach((m) => {
+        pdf.setFillColor(249, 249, 249)
+        pdf.rect(xPos, yPosition, boxWidth, 16, 'F')
+        pdf.setTextColor(m.color[0], m.color[1], m.color[2])
+        pdf.setFontSize(13)
+        pdf.setFont(undefined, 'bold')
+        pdf.text(m.value.toString(), xPos + boxWidth / 2, yPosition + 7, { align: 'center' })
+        pdf.setTextColor(102, 102, 102)
+        pdf.setFontSize(7)
+        pdf.setFont(undefined, 'normal')
+        pdf.text(m.label, xPos + boxWidth / 2, yPosition + 13, { align: 'center' })
+        xPos += boxWidth + 1.5
+      })
+      yPosition += 22
+
+      // Channel Details
+      checkNewPage(15)
+      pdf.setTextColor(26, 26, 26)
+      pdf.setFontSize(12)
+      pdf.setFont(undefined, 'bold')
+      pdf.text('Channel Performance Details', margin, yPosition)
+      yPosition += 10
+
+      // For each channel
+      selectedDataList.forEach((channel) => {
+        checkNewPage(15)
+
+        const posCount = channel.metrics.filter(m => m.trend === 'up').length
+        const negCount = channel.metrics.filter(m => m.trend === 'down').length
+
+        // Channel name
+        pdf.setTextColor(26, 26, 26)
+        pdf.setFontSize(11)
+        pdf.setFont(undefined, 'bold')
+        pdf.text((channel.label || 'Channel') as string, margin, yPosition)
+        yPosition += 5
+
+        // Channel stats
+        pdf.setTextColor(102, 102, 102)
+        pdf.setFontSize(8)
+        pdf.setFont(undefined, 'normal')
+        pdf.text(`${channel.metrics.length} metrics | ${posCount} positive · ${negCount} declining` || '', margin, yPosition)
+        yPosition += 6
+
+        // Metrics list
+        pdf.setFontSize(7)
+        channel.metrics.forEach(metric => {
+          checkNewPage(4)
+          const trendEmoji = metric.trend === 'up' ? '↑' : metric.trend === 'down' ? '↓' : '—'
+          const changePercent = metric.deltaPercent ? (metric.deltaPercent > 0 ? '+' : '') + metric.deltaPercent.toFixed(1) + '%' : '—'
+
+          pdf.setTextColor(51, 51, 51)
+          pdf.text(`${metric.label}: ${formatValue(metric.value)} ${metric.unit}` || '', margin + 2, yPosition)
+
+          pdf.setTextColor(metric.trend === 'up' ? 16 : metric.trend === 'down' ? 239 : 102, metric.trend === 'up' ? 185 : metric.trend === 'down' ? 68 : 102, metric.trend === 'up' ? 129 : 68)
+          pdf.text(`${trendEmoji} (${changePercent})`, contentWidth - 20, yPosition)
+
+          yPosition += 3.5
+        })
+
+        yPosition += 3
+
+        // Channel summary if exists
+        if (channelSummaries[channel.channel]) {
+          checkNewPage(10)
+          pdf.setFillColor(240, 247, 255)
+          pdf.rect(margin, yPosition, contentWidth, 5, 'F')
+          pdf.setTextColor(0, 132, 255)
+          pdf.setFontSize(8)
+          pdf.setFont(undefined, 'bold')
+          pdf.text('Analysis & Summary' || '', margin + 2, yPosition + 3)
+          yPosition += 6
+
+          pdf.setTextColor(51, 51, 51)
+          pdf.setFontSize(7)
+          pdf.setFont(undefined, 'normal')
+          const summaryLines = pdf.splitTextToSize((channelSummaries[channel.channel] || '') as string, contentWidth - 4)
+          pdf.text(summaryLines, margin + 2, yPosition)
+          yPosition += summaryLines.length * 3 + 4
+        }
+
+        yPosition += 3
+      })
+
+      // Conclusions
+      if (conclusions) {
+        checkNewPage(15)
+        pdf.setFillColor(240, 249, 255)
+        pdf.rect(margin, yPosition, contentWidth, 5, 'F')
+        pdf.setTextColor(2, 132, 199)
+        pdf.setFontSize(11)
+        pdf.setFont(undefined, 'bold')
+        pdf.text('Conclusions & Recommendations', margin + 2, yPosition + 3)
+        yPosition += 7
+
+        pdf.setTextColor(51, 51, 51)
+        pdf.setFontSize(8)
+        pdf.setFont(undefined, 'normal')
+        const conclusionLines = pdf.splitTextToSize(conclusions ?? '', contentWidth - 4)
+        pdf.text(conclusionLines as string[], margin + 2, yPosition)
       }
 
       pdf.save(`marketing-report-${new Date().toISOString().split('T')[0]}.pdf`)
@@ -334,8 +368,6 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
     } catch (error) {
       console.error('PDF export error:', error)
       toast.error('Failed to export PDF')
-    } finally {
-      setExporting(false)
     }
   }
 
