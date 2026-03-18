@@ -303,6 +303,18 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
+        allowTaint: true,
+        onclone: (clonedDocument) => {
+          // Remove or replace unsupported color functions
+          const styles = clonedDocument.querySelectorAll('[style]')
+          styles.forEach((el) => {
+            const style = el.getAttribute('style')
+            if (style && style.includes('lab(')) {
+              const newStyle = style.replace(/lab\([^)]+\)/g, '#0084ff')
+              el.setAttribute('style', newStyle)
+            }
+          })
+        },
       })
       document.body.removeChild(htmlContent)
 
