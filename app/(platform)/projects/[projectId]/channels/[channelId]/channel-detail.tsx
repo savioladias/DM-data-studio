@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Sparkles, Loader2 } from 'lucide-react'
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Sparkles, Loader2, Eye } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { ForecastChart } from '@/components/dashboard/forecast-chart'
+import { generateForecast } from '@/lib/forecast'
 import { getChannel } from '@/lib/channels'
 import type { ChannelId } from '@/lib/channels'
 import type { Metric } from '@/lib/types'
@@ -62,6 +64,7 @@ export function ChannelDetail({
   const [loadingSummary, setLoadingSummary] = useState(false)
   const [summaryOpen, setSummaryOpen] = useState(false)
   const [aiAvailable, setAiAvailable] = useState(true)
+  const [forecastOpen, setForecastOpen] = useState<string | null>(null)
 
   const fetchMetrics = async () => {
     setLoading(true)
@@ -264,7 +267,7 @@ export function ChannelDetail({
                   <Card key={metric.key} className="hover:border-primary/30 transition-colors">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
-                        <div>
+                        <div className="flex-1">
                           <CardTitle className="text-base">{metric.label}</CardTitle>
                           <p className="text-sm text-muted-foreground mt-1">
                             {metric.unit && ['£', '$', '€'].includes(metric.unit) && (
@@ -276,13 +279,26 @@ export function ChannelDetail({
                             )}
                           </p>
                         </div>
-                        <div className={cn(
-                          'h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0',
-                          isPositive ? 'bg-emerald-500/10' : isNegative ? 'bg-red-500/10' : 'bg-muted'
-                        )}>
-                          {isPositive && <TrendingUp className="h-5 w-5 text-emerald-500" />}
-                          {isNegative && <TrendingDown className="h-5 w-5 text-red-500" />}
-                          {!isPositive && !isNegative && <Minus className="h-5 w-5 text-muted-foreground" />}
+                        <div className="flex gap-2">
+                          {metric.historicalData && metric.historicalData.length > 0 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setForecastOpen(metric.key)}
+                              className="h-10 w-10 p-0"
+                              title="View 7-day forecast"
+                            >
+                              <TrendingUp className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <div className={cn(
+                            'h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0',
+                            isPositive ? 'bg-emerald-500/10' : isNegative ? 'bg-red-500/10' : 'bg-muted'
+                          )}>
+                            {isPositive && <TrendingUp className="h-5 w-5 text-emerald-500" />}
+                            {isNegative && <TrendingDown className="h-5 w-5 text-red-500" />}
+                            {!isPositive && !isNegative && <Minus className="h-5 w-5 text-muted-foreground" />}
+                          </div>
                         </div>
                       </div>
                     </CardHeader>
@@ -313,8 +329,8 @@ export function ChannelDetail({
                                 border: '1px solid hsl(var(--border))',
                                 borderRadius: '8px',
                               }}
-                              formatter={(value: number) => formatValue(value)}
-                              labelFormatter={(label) => label}
+                              formatter={(value: any) => formatValue(value)}
+                              labelFormatter={(label: any) => label}
                             />
                             <Line
                               type="monotone"
@@ -363,6 +379,32 @@ export function ChannelDetail({
           </div>
         </>
       )}
+
+      {/* Forecast Modal */}
+      <Dialog open={!!forecastOpen} onOpenChange={(open) => !open && setForecastOpen(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>7-Day Forecast</DialogTitle>
+          </DialogHeader>
+          {forecastOpen && (() => {
+            const metric = channelMetrics.find(m => m.key === forecastOpen)
+            if (!metric?.historicalData) return <p className="text-muted-foreground">No historical data available</p>
+
+            const forecast = generateForecast(metric.historicalData)
+            return (
+              <ForecastChart
+                label={metric.label}
+                historicalData={metric.historicalData}
+                forecast={forecast.forecast}
+                confidenceHigh={forecast.confidenceHigh}
+                confidenceLow={forecast.confidenceLow}
+                trend={forecast.trend}
+                unit={metric.unit}
+              />
+            )
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

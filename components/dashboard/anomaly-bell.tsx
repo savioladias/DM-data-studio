@@ -9,7 +9,9 @@ export interface Anomaly {
   metricKey: string
   title: string
   description: string
-  severity: 'critical' | 'warning'
+  severity: 'critical' | 'warning' | 'info'
+  value?: number
+  expectedRange?: { min: number; max: number }
 }
 
 interface AnomalyBellProps {

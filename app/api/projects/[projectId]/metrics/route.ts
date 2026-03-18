@@ -172,6 +172,7 @@ function generateMockMetrics(channel: string) {
       unit: m.unit,
       deltaPercent: parseFloat(delta.toFixed(1)),
       trend: delta > 1 ? 'up' : delta < -1 ? 'down' : 'stable',
+      historicalData: generateMockHistoricalData(current, 30),
     }
   })
 }
@@ -225,7 +226,7 @@ async function fetchMetricsForChannel(
   project: any,
   startDate: string = getPastDate(30),
   endDate: string = getTodayDate()
-): Promise<ReturnType<typeof generateMockMetrics>> {
+): Promise<ReturnType<typeof generateMockMetrics> | any> {
   try {
     // Find credentials for this channel
     const credential = project.credentials.find((c: any) => c.channel === channel)
@@ -313,6 +314,7 @@ async function fetchMetricsForChannel(
           unit: '',
           deltaPercent: calculateDelta(getLatestValue('sessions'), getPreviousValue('sessions')),
           trend: calculateTrend(getLatestValue('sessions'), getPreviousValue('sessions')),
+          historicalData: undefined,
         },
         {
           key: 'activeUsers',
@@ -322,6 +324,7 @@ async function fetchMetricsForChannel(
           unit: '',
           deltaPercent: calculateDelta(getLatestValue('activeUsers'), getPreviousValue('activeUsers')),
           trend: calculateTrend(getLatestValue('activeUsers'), getPreviousValue('activeUsers')),
+          historicalData: undefined,
         },
         {
           key: 'newUsers',
@@ -331,6 +334,7 @@ async function fetchMetricsForChannel(
           unit: '',
           deltaPercent: calculateDelta(getLatestValue('newUsers'), getPreviousValue('newUsers')),
           trend: calculateTrend(getLatestValue('newUsers'), getPreviousValue('newUsers')),
+          historicalData: undefined,
         },
         {
           key: 'bounceRate',
@@ -340,6 +344,7 @@ async function fetchMetricsForChannel(
           unit: '%',
           deltaPercent: calculateDelta(getPreviousValue('bounceRate'), getLatestValue('bounceRate')), // Inverted: lower is better
           trend: calculateTrend(getPreviousValue('bounceRate'), getLatestValue('bounceRate')), // Inverted
+          historicalData: undefined,
         },
         {
           key: 'screenPageViews',
@@ -349,6 +354,7 @@ async function fetchMetricsForChannel(
           unit: '',
           deltaPercent: calculateDelta(getLatestValue('screenPageViews'), getPreviousValue('screenPageViews')),
           trend: calculateTrend(getLatestValue('screenPageViews'), getPreviousValue('screenPageViews')),
+          historicalData: undefined,
         },
       ]
     }
@@ -658,4 +664,25 @@ function calculateDelta(current: number, previous: number): number {
 function calculateTrend(current: number, previous: number): 'up' | 'down' | 'stable' {
   const delta = calculateDelta(current, previous)
   return delta > 1 ? 'up' : delta < -1 ? 'down' : 'stable'
+}
+
+/**
+ * Generate mock historical time series for forecasting
+ */
+function generateMockHistoricalData(baseValue: number, days: number = 30) {
+  const data = []
+  const today = new Date()
+  for (let i = days; i >= 0; i--) {
+    const date = new Date(today)
+    date.setDate(date.getDate() - i)
+    // Add some realistic variation
+    const variance = (Math.random() - 0.5) * 0.2 * baseValue
+    const trend = (days - i) * 0.01 * baseValue
+    const value = Math.max(0, baseValue + variance + trend)
+    data.push({
+      date: date.toISOString().split('T')[0],
+      value: Math.round(value * 100) / 100,
+    })
+  }
+  return data
 }

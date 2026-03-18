@@ -1,3 +1,8 @@
+export interface TimeSeriesPoint {
+  date: string
+  value: number
+}
+
 export interface Metric {
   key: string
   label: string
@@ -10,6 +15,7 @@ export interface Metric {
   forecast?: number[]
   forecastConfidenceHigh?: number[]
   forecastConfidenceLow?: number[]
+  historicalData?: TimeSeriesPoint[] | null
 }
 
 export type DateRangePreset = '7d' | '14d' | '30d' | '90d' | 'ytd' | 'custom'

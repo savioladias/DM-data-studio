@@ -74,11 +74,12 @@ model Project {
   metrics     Metric[]
   campaigns   Campaign[]
   insights    Insight[]
-  reports     Report[]
-  csvUploads  CsvUpload[]
-  shareTokens ShareToken[]
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  reports         Report[]
+  csvUploads      CsvUpload[]
+  shareTokens     ShareToken[]
+  scheduledReports ScheduledReport[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 }
 
 model ProjectChannel {
@@ -212,4 +213,26 @@ model ShareToken {
 
   @@index([projectId])
   @@index([token])
+}
+
+model ScheduledReport {
+  id              String    @id @default(cuid())
+  projectId       String
+  recipientEmail  String
+  name            String
+  frequency       String    // 'daily', 'weekly', 'monthly'
+  dayOfWeek       Int?      // 0-6 for weekly (Sunday=0)
+  dayOfMonth      Int?      // 1-28 for monthly
+  hour            Int       @default(9) // 0-23
+  enabled         Boolean   @default(true)
+  includeChannels String?   // JSON array of channel IDs
+  lastSentAt      DateTime?
+  nextSendAt      DateTime?
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([projectId, recipientEmail, name])
+  @@index([projectId])
+  @@index([enabled, nextSendAt])
 }

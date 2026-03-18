@@ -61,11 +61,11 @@ export function ProjectDashboard({ project, enabledChannels, recentInsights }: P
       setLastRefresh(new Date())
 
       // Detect anomalies from the fetched metrics
-      const flatMetrics = Object.values(data.metrics ?? {}).flat()
+      const flatMetrics = Object.values(data.metrics ?? {}).flat() as Metric[]
       if (flatMetrics.length > 0) {
         try {
           // Create minimal time series for each metric: [prev*0.98, prev, current]
-          const anomalyInput = flatMetrics.map(m => ({
+          const anomalyInput = flatMetrics.map((m: Metric) => ({
             key: m.key,
             label: m.label,
             current: m.value,

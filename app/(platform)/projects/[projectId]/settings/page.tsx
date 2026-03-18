@@ -15,10 +15,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Settings2, Upload, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { ChannelConnectionsSection } from '@/components/settings/channel-connections-section'
+import { ScheduledReportsSection } from '@/components/settings/scheduled-reports-section'
 import { INDUSTRIES, CURRENCIES } from '@/lib/constants'
 import { CHANNEL_GROUPS, CHANNEL_CATEGORIES, getChannel } from '@/lib/channels'
 import type { ChannelId, ChannelCategory } from '@/lib/channels'
@@ -452,6 +453,18 @@ export default function ProjectSettingsPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Channel Connections Section */}
+      <ChannelConnectionsSection
+        projectId={projectId}
+        enabledChannels={selectedChannels as ChannelId[]}
+      />
+
+      {/* Scheduled Reports Section */}
+      <ScheduledReportsSection
+        projectId={projectId}
+        enabledChannels={selectedChannels as ChannelId[]}
+      />
     </div>
   )
 }
