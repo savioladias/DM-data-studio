@@ -17,6 +17,7 @@ export async function GET(
     where: { id: projectId, userId: session.user.id },
     include: {
       channels: true,
+      credentials: true,
       insights: { orderBy: { createdAt: 'desc' }, take: 10 },
     },
   })

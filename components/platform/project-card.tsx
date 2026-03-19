@@ -37,13 +37,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <Link href={`/projects/${project.id}`}>
-      <Card className="group relative cursor-pointer h-full flex flex-col overflow-hidden pt-0 hover:shadow-[0_4px_24px_oklch(0_0_0/12%),0_0_0_1px_oklch(0.57_0.24_25/20%)] dark:hover:shadow-[0_4px_24px_oklch(0_0_0/40%),0_0_0_1px_oklch(0.65_0.20_25/25%)] transition-all duration-250 ease-out">
-        {/* Accent strip - uses project brandColor */}
-        <div
-          className="h-1 w-full flex-shrink-0 rounded-t-xl"
-          style={{ backgroundColor: project.brandColor }}
-        />
-
+      <Card className="group relative cursor-pointer h-full flex flex-col overflow-hidden hover:shadow-[0_4px_24px_oklch(0_0_0/12%),0_0_0_1px_oklch(0.57_0.24_25/20%)] dark:hover:shadow-[0_4px_24px_oklch(0_0_0/40%),0_0_0_1px_oklch(0.65_0.20_25/25%)] transition-all duration-250 ease-out">
         <CardHeader className="pb-4 pt-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 flex-1">

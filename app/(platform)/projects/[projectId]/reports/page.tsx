@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { FileText, Loader2, FileJson, Download } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { getChannel } from '@/lib/channels'
@@ -83,6 +84,9 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
   const [editingConclusions, setEditingConclusions] = useState(false)
   const [generatingExecutiveAI, setGeneratingExecutiveAI] = useState(false)
   const [generatingConclusionsAI, setGeneratingConclusionsAI] = useState(false)
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
+  const [customChannels, setCustomChannels] = useState<ChannelId[]>([])
+  const [customMetrics, setCustomMetrics] = useState<Record<ChannelId, string[]>>({})
 
   useEffect(() => {
     const fetchData = async () => {
@@ -177,15 +181,60 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
     }
   }
 
-  const exportAsPDF = async () => {
-    if (selectedChannels.length === 0) {
+  const openDownloadDialog = () => {
+    setCustomChannels(selectedChannels)
+    const metricMap: Record<ChannelId, string[]> = {}
+    selectedChannels.forEach(ch => {
+      const channel = metrics.find(m => m.channel === ch)
+      if (channel) {
+        metricMap[ch] = channel.metrics.map(m => m.key)
+      }
+    })
+    setCustomMetrics(metricMap)
+    setDownloadDialogOpen(true)
+  }
+
+  const toggleCustomChannel = (channelId: ChannelId) => {
+    setCustomChannels(prev =>
+      prev.includes(channelId)
+        ? prev.filter(c => c !== channelId)
+        : [...prev, channelId]
+    )
+  }
+
+  const toggleCustomMetric = (channelId: ChannelId, metricKey: string) => {
+    setCustomMetrics(prev => {
+      const current = prev[channelId] || []
+      return {
+        ...prev,
+        [channelId]: current.includes(metricKey)
+          ? current.filter(m => m !== metricKey)
+          : [...current, metricKey],
+      }
+    })
+  }
+
+  const exportAsPDF = async (channelIds?: ChannelId[], metricsMap?: Record<ChannelId, string[]>) => {
+    const exportChannels = channelIds || selectedChannels
+    const exportMetricsMap = metricsMap || {}
+
+    if (exportChannels.length === 0) {
       toast.error('Select at least one channel to export')
       return
     }
 
     setExporting(true)
+    setDownloadDialogOpen(false)
     try {
-      const selectedDataList = metrics.filter(m => selectedChannels.includes(m.channel))
+      let selectedDataList = metrics.filter(m => exportChannels.includes(m.channel))
+
+      // Filter metrics if custom metrics are specified
+      if (Object.keys(exportMetricsMap).length > 0) {
+        selectedDataList = selectedDataList.map(channel => ({
+          ...channel,
+          metrics: channel.metrics.filter(m => (exportMetricsMap[channel.channel] || []).includes(m.key)),
+        })).filter(channel => channel.metrics.length > 0)
+      }
       const today = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })
       const totalMetricsCount = selectedDataList.reduce((sum, c) => sum + c.metrics.length, 0)
       const positiveMetricsCount = selectedDataList.reduce((sum, c) => sum + c.metrics.filter(m => m.trend === 'up').length, 0)
@@ -689,7 +738,7 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                 <CardTitle className="text-sm">Export Report</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button onClick={exportAsPDF} disabled={exporting} className="w-full justify-start bg-primary hover:bg-primary/90">
+                <Button onClick={openDownloadDialog} disabled={exporting} className="w-full justify-start bg-primary hover:bg-primary/90">
                   {exporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
                   Download PDF
                 </Button>
@@ -1200,6 +1249,106 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
           </Card>
         </div>
       </div>
+
+      {/* Download PDF Dialog */}
+      <Dialog open={downloadDialogOpen} onOpenChange={setDownloadDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Customize PDF Report</DialogTitle>
+            <DialogDescription>
+              Select which channels and metrics to include in your PDF report
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Channels Selection */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3">Channels</h3>
+              <div className="space-y-2">
+                {metrics.map(channel => (
+                  <label key={channel.channel} className="flex items-start gap-3 cursor-pointer hover:bg-muted p-2 rounded transition-colors">
+                    <Checkbox
+                      checked={customChannels.includes(channel.channel)}
+                      onCheckedChange={() => toggleCustomChannel(channel.channel)}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{channel.label}</p>
+                      <p className="text-xs text-muted-foreground">{channel.metrics.length} metrics</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Metrics Selection per Channel */}
+            {customChannels.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Metrics per Channel</h3>
+                <div className="space-y-4">
+                  {customChannels.map(channelId => {
+                    const channel = metrics.find(m => m.channel === channelId)
+                    if (!channel) return null
+
+                    return (
+                      <div key={channelId} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="h-5 w-5 rounded flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
+                            style={{ backgroundColor: getChannel(channelId)?.color || '#ccc' }}
+                          >
+                            {getChannel(channelId)?.label.charAt(0) || 'C'}
+                          </div>
+                          <h4 className="text-sm font-medium">{channel.label}</h4>
+                          <span className="text-xs text-muted-foreground ml-auto">
+                            {(customMetrics[channelId] || []).length} of {channel.metrics.length} selected
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          {channel.metrics.map(metric => (
+                            <label key={metric.key} className="flex items-center gap-2 cursor-pointer text-xs">
+                              <Checkbox
+                                checked={(customMetrics[channelId] || []).includes(metric.key)}
+                                onCheckedChange={() => toggleCustomMetric(channelId, metric.key)}
+                              />
+                              <span className="truncate">{metric.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Dialog Actions */}
+          <div className="flex gap-3 justify-end pt-4 border-t">
+            <Button variant="outline" onClick={() => setDownloadDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => exportAsPDF(customChannels, customMetrics)}
+              disabled={customChannels.length === 0 || exporting}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {exporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download PDF
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

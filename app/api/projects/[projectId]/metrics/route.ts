@@ -208,10 +208,14 @@ export async function GET(
     return NextResponse.json({ channel, metrics })
   }
 
-  // Return metrics for all enabled channels
+  // Return metrics only for connected channels (channels with credentials)
   const allMetrics: Record<string, ReturnType<typeof generateMockMetrics>> = {}
   for (const ch of project.channels) {
-    allMetrics[ch.channel] = await fetchMetricsForChannel(ch.channel as ChannelId, project, startDate, endDate)
+    // Only include metrics if this channel has credentials (is connected)
+    const hasCredentials = project.credentials.some((c: any) => c.channel === ch.channel && c.accessToken)
+    if (hasCredentials) {
+      allMetrics[ch.channel] = await fetchMetricsForChannel(ch.channel as ChannelId, project, startDate, endDate)
+    }
   }
 
   return NextResponse.json({ metrics: allMetrics })
@@ -232,8 +236,8 @@ async function fetchMetricsForChannel(
     const credential = project.credentials.find((c: any) => c.channel === channel)
 
     if (!credential?.accessToken) {
-      // No credentials connected, use mock data
-      return generateMockMetrics(channel)
+      // No credentials connected, return empty
+      return []
     }
 
     // Check if token is expired and refresh if needed
@@ -262,7 +266,7 @@ async function fetchMetricsForChannel(
         })
       } catch (refreshError) {
         console.error(`Failed to refresh token for ${channel}:`, refreshError)
-        return generateMockMetrics(channel)
+        return []
       }
     }
 
@@ -270,7 +274,7 @@ async function fetchMetricsForChannel(
     if (channel === 'GOOGLE_ANALYTICS') {
       // Property ID should be stored in credential.accountId
       if (!credential.accountId || credential.accountId === 'pending-property-selection') {
-        return generateMockMetrics(channel)
+        return []
       }
 
       const gaMetrics = await fetchGA4Metrics({
@@ -636,12 +640,12 @@ async function fetchMetricsForChannel(
       ]
     }
 
-    // For other channels, use mock data for now
-    return generateMockMetrics(channel)
+    // For other channels, return empty (no integrations built yet)
+    return []
   } catch (error) {
     console.error(`Error fetching metrics for ${channel}:`, error)
-    // Fall back to mock data on any error
-    return generateMockMetrics(channel)
+    // Return empty on error (no mock data)
+    return []
   }
 }
 

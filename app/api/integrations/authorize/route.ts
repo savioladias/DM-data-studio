@@ -9,7 +9,12 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(req: NextRequest) {
   try {
+    console.log('=== AUTHORIZE REQUEST ===')
+    console.log('URL:', req.url)
+
     const session = await auth()
+    console.log('Session:', session?.user?.id ? 'Authenticated' : 'Not authenticated')
+
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -20,6 +25,9 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const projectId = searchParams.get('projectId')
     const platform = searchParams.get('platform')
+
+    console.log('ProjectId:', projectId)
+    console.log('Platform:', platform)
 
     if (!projectId || !platform) {
       return NextResponse.json(
@@ -45,14 +53,18 @@ export async function GET(req: NextRequest) {
     }
 
     // Get OAuth authorization URL and redirect
+    console.log('Getting auth URL for platform:', platform)
     const authUrl = getAuthorizationUrl(platform, projectId)
+    console.log('Auth URL:', authUrl.substring(0, 100) + '...')
     return NextResponse.redirect(authUrl)
   } catch (error) {
-    console.error('Authorization error:', error)
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    console.error('Authorization error:', errorMsg)
+    console.error('Full error:', error)
     return NextResponse.json(
       {
         error: 'Authorization failed',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: errorMsg,
       },
       { status: 500 }
     )
