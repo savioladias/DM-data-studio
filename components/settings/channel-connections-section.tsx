@@ -75,7 +75,9 @@ export function ChannelConnectionsSection({ projectId, enabledChannels }: Channe
         }
       }
     } catch (error) {
-      toast.error('Failed to initiate connection')
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+      console.error('Connection error:', errorMsg)
+      toast.error(`Failed to initiate connection: ${errorMsg}`)
     } finally {
       setConnecting(null)
     }
