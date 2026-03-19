@@ -18,9 +18,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  // Ollama runs locally, no API key needed
+  // Verify Ollama is running by checking the API endpoint
+  const ollamaUrl = process.env.OLLAMA_API_URL || 'http://localhost:11434/api/generate'
+  try {
+    const healthCheck = await fetch(ollamaUrl.replace('/api/generate', '/api/tags'), {
+      method: 'GET',
+      timeout: 2000,
+    })
+    if (!healthCheck.ok) {
+      return NextResponse.json(
+        { error: 'Ollama is not running. Please start Ollama: https://ollama.ai' },
+        { status: 503 }
+      )
+    }
+  } catch {
     return NextResponse.json(
-      { error: 'ANTHROPIC_API_KEY not configured. Add your key to .env.local' },
+      { error: 'Ollama is not running. Please start Ollama: https://ollama.ai' },
       { status: 503 }
     )
   }

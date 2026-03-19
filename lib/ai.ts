@@ -1,9 +1,31 @@
-import Anthropic from '@anthropic-ai/sdk'
+// Ollama API endpoint (local, runs on your machine)
+const OLLAMA_API = process.env.OLLAMA_API_URL || 'http://localhost:11434/api/generate'
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'mistral'
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || '',
-  dangerouslyAllowBrowser: true,
-})
+async function callOllama(prompt: string, maxTokens: number = 500): Promise<string> {
+  try {
+    const response = await fetch(OLLAMA_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: OLLAMA_MODEL,
+        prompt,
+        stream: false,
+        num_predict: maxTokens,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Ollama API error: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    return data.response || ''
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    throw new Error(`Ollama API error: ${msg}`)
+  }
+}
 
 export interface MetricContext {
   metricName: string
@@ -45,13 +67,7 @@ export async function generateMetricInsight(metric: MetricContext): Promise<stri
       ? `${metric.deltaPercent > 0 ? '+' : ''}${metric.deltaPercent.toFixed(1)}% vs previous period`
       : 'no comparison data available'
 
-    const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 150,
-      messages: [
-        {
-          role: 'user',
-          content: `You are a marketing analytics expert. Write a single, concise insight (1-2 sentences, max 30 words) about this metric for a client dashboard.
+    const prompt = `You are a marketing analytics expert. Write a single, concise insight (1-2 sentences, max 30 words) about this metric for a client dashboard.
 
 Metric: ${metric.metricName}
 Channel: ${metric.channel}
@@ -59,16 +75,12 @@ Current value: ${metric.currentValue}${metric.unit ? ' ' + metric.unit : ''}
 Change: ${delta}
 Trend: ${metric.trend || 'unknown'}
 
-Be specific, direct, and actionable. No fluff. Start with the most important observation.`,
-        },
-      ],
-    })
+Be specific, direct, and actionable. No fluff. Start with the most important observation.`
 
-    const textContent = message.content.find(block => block.type === 'text')
-    return textContent && textContent.type === 'text' ? textContent.text : ''
+    return await callOllama(prompt, 150)
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Claude API error: ${msg}`)
+    throw new Error(`${msg}`)
   }
 }
 
@@ -78,13 +90,7 @@ export async function generateChannelSummary(context: ChannelContext): Promise<s
       .map(m => `- ${m.metricName}: ${m.currentValue}${m.unit ? ' ' + m.unit : ''} (${m.deltaPercent !== undefined ? (m.deltaPercent > 0 ? '+' : '') + m.deltaPercent.toFixed(1) + '%' : 'no change data'})`)
       .join('\n')
 
-    const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 500,
-      messages: [
-        {
-          role: 'user',
-          content: `You are a marketing analytics expert writing a performance summary for a client report.
+    const prompt = `You are a marketing analytics expert writing a performance summary for a client report.
 
 Project: ${context.projectName}
 Channel: ${context.channel}
@@ -95,16 +101,12 @@ ${metricsText}
 
 Write a 3-4 sentence summary covering: overall performance, the standout positive, the main concern, and one specific recommended action. Be concrete and data-driven. No generic marketing speak.
 
-End with a brief 'Recommended Next Steps:' section listing 2-3 specific, actionable recommendations based on this data.`,
-        },
-      ],
-    })
+End with a brief 'Recommended Next Steps:' section listing 2-3 specific, actionable recommendations based on this data.`
 
-    const textContent = message.content.find(block => block.type === 'text')
-    return textContent && textContent.type === 'text' ? textContent.text : ''
+    return await callOllama(prompt, 500)
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Claude API error: ${msg}`)
+    throw new Error(`${msg}`)
   }
 }
 
@@ -117,13 +119,7 @@ export async function generateAnswerToQuestion(
       .map(m => `- ${m.metricName} (${m.channel}): ${m.currentValue}${m.unit ? ' ' + m.unit : ''} (${m.deltaPercent !== undefined ? (m.deltaPercent > 0 ? '+' : '') + m.deltaPercent.toFixed(1) + '%' : 'no change'})`)
       .join('\n')
 
-    const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 300,
-      messages: [
-        {
-          role: 'user',
-          content: `You are a marketing analytics expert answering questions about marketing performance data.
+    const prompt = `You are a marketing analytics expert answering questions about marketing performance data.
 
 Project: ${projectName}
 Period: ${data.dateRange}
@@ -133,16 +129,12 @@ ${metricsText || 'No metrics available'}
 
 User Question: ${data.question}
 
-Provide a concise, data-driven answer (2-4 sentences). Reference specific metrics from the data above when relevant. Be direct and actionable.`,
-        },
-      ],
-    })
+Provide a concise, data-driven answer (2-4 sentences). Reference specific metrics from the data above when relevant. Be direct and actionable.`
 
-    const textContent = message.content.find(block => block.type === 'text')
-    return textContent && textContent.type === 'text' ? textContent.text : ''
+    return await callOllama(prompt, 300)
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Claude API error: ${msg}`)
+    throw new Error(`${msg}`)
   }
 }
 
@@ -160,13 +152,7 @@ export async function generateRecommendations(
       })
       .join('\n\n')
 
-    const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 800,
-      messages: [
-        {
-          role: 'user',
-          content: `You are a marketing strategist. Based on this data for "${projectName}", provide exactly 3 prioritised recommendations in JSON format.
+    const prompt = `You are a marketing strategist. Based on this data for "${projectName}", provide exactly 3 prioritised recommendations in JSON format.
 
 Data:
 ${summaryText}
@@ -181,21 +167,17 @@ Return ONLY valid JSON array:
   }
 ]
 
-No markdown, no extra text, just the JSON array.`,
-        },
-      ],
-    })
+No markdown, no extra text, just the JSON array.`
 
     try {
-      const textContent = message.content.find(block => block.type === 'text')
-      const text = textContent && textContent.type === 'text' ? textContent.text : ''
+      const text = await callOllama(prompt, 800)
       return JSON.parse(text) as Recommendation[]
     } catch {
       return []
     }
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Claude API error: ${msg}`)
+    throw new Error(`${msg}`)
   }
 }
 
@@ -208,13 +190,7 @@ export async function generateExecutiveSummary(
       .map(m => `- ${m.metricName} (${m.channel}): ${m.currentValue}${m.unit ? ' ' + m.unit : ''} (${m.deltaPercent !== undefined ? (m.deltaPercent > 0 ? '+' : '') + m.deltaPercent.toFixed(1) + '%' : 'no change'})`)
       .join('\n')
 
-    const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 400,
-      messages: [
-        {
-          role: 'user',
-          content: `You are a marketing analytics expert writing an executive summary for a client report.
+    const prompt = `You are a marketing analytics expert writing an executive summary for a client report.
 
 Project: ${projectName}
 
@@ -227,16 +203,12 @@ Write a 3-4 sentence executive summary that:
 3. Identifies main challenges or areas needing attention
 4. Sets the stage for detailed analysis below
 
-Be professional, data-driven, and concise. Focus on what matters most to the client.`,
-        },
-      ],
-    })
+Be professional, data-driven, and concise. Focus on what matters most to the client.`
 
-    const textContent = message.content.find(block => block.type === 'text')
-    return textContent && textContent.type === 'text' ? textContent.text : ''
+    return await callOllama(prompt, 400)
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Claude API error: ${msg}`)
+    throw new Error(`${msg}`)
   }
 }
 
@@ -249,13 +221,7 @@ export async function generateConclusions(
       .map(m => `- ${m.metricName} (${m.channel}): ${m.currentValue}${m.unit ? ' ' + m.unit : ''} (${m.deltaPercent !== undefined ? (m.deltaPercent > 0 ? '+' : '') + m.deltaPercent.toFixed(1) + '%' : 'no change'})`)
       .join('\n')
 
-    const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 600,
-      messages: [
-        {
-          role: 'user',
-          content: `You are a marketing strategist writing conclusions and recommendations for a client report.
+    const prompt = `You are a marketing strategist writing conclusions and recommendations for a client report.
 
 Project: ${projectName}
 
@@ -268,16 +234,12 @@ Write conclusions and recommendations that:
 3. Provide 3-4 specific, actionable recommendations based on the data
 4. Include next steps and priority areas for focus
 
-Be strategic, specific, and actionable. Reference metrics when relevant.`,
-        },
-      ],
-    })
+Be strategic, specific, and actionable. Reference metrics when relevant.`
 
-    const textContent = message.content.find(block => block.type === 'text')
-    return textContent && textContent.type === 'text' ? textContent.text : ''
+    return await callOllama(prompt, 600)
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Claude API error: ${msg}`)
+    throw new Error(`${msg}`)
   }
 }
 
