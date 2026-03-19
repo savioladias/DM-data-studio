@@ -1,6 +1,8 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import Groq from 'groq-sdk'
 
-const client = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || '')
+const client = new Groq({
+  apiKey: process.env.GROQ_API_KEY || '',
+})
 
 export interface MetricContext {
   metricName: string
@@ -42,8 +44,11 @@ export async function generateMetricInsight(metric: MetricContext): Promise<stri
       ? `${metric.deltaPercent > 0 ? '+' : ''}${metric.deltaPercent.toFixed(1)}% vs previous period`
       : 'no comparison data available'
 
-    const model = client.getGenerativeModel({ model: 'gemini-2.0-flash' })
-    const result = await model.generateContent(`You are a marketing analytics expert. Write a single, concise insight (1-2 sentences, max 30 words) about this metric for a client dashboard.
+    const message = await client.chat.completions.create({
+      messages: [
+        {
+          role: 'user',
+          content: `You are a marketing analytics expert. Write a single, concise insight (1-2 sentences, max 30 words) about this metric for a client dashboard.
 
 Metric: ${metric.metricName}
 Channel: ${metric.channel}
@@ -51,12 +56,18 @@ Current value: ${metric.currentValue}${metric.unit ? ' ' + metric.unit : ''}
 Change: ${delta}
 Trend: ${metric.trend || 'unknown'}
 
-Be specific, direct, and actionable. No fluff. Start with the most important observation.`)
+Be specific, direct, and actionable. No fluff. Start with the most important observation.`,
+        },
+      ],
+      model: 'mixtral-8x7b-32768',
+      temperature: 0.7,
+      max_tokens: 150,
+    })
 
-    return result.response.text()
+    return message.choices[0]?.message?.content || ''
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Gemini API error: ${msg}`)
+    throw new Error(`Groq API error: ${msg}`)
   }
 }
 
@@ -66,8 +77,11 @@ export async function generateChannelSummary(context: ChannelContext): Promise<s
       .map(m => `- ${m.metricName}: ${m.currentValue}${m.unit ? ' ' + m.unit : ''} (${m.deltaPercent !== undefined ? (m.deltaPercent > 0 ? '+' : '') + m.deltaPercent.toFixed(1) + '%' : 'no change data'})`)
       .join('\n')
 
-    const model = client.getGenerativeModel({ model: 'gemini-2.0-flash' })
-    const result = await model.generateContent(`You are a marketing analytics expert writing a performance summary for a client report.
+    const message = await client.chat.completions.create({
+      messages: [
+        {
+          role: 'user',
+          content: `You are a marketing analytics expert writing a performance summary for a client report.
 
 Project: ${context.projectName}
 Channel: ${context.channel}
@@ -78,12 +92,18 @@ ${metricsText}
 
 Write a 3-4 sentence summary covering: overall performance, the standout positive, the main concern, and one specific recommended action. Be concrete and data-driven. No generic marketing speak.
 
-End with a brief 'Recommended Next Steps:' section listing 2-3 specific, actionable recommendations based on this data.`)
+End with a brief 'Recommended Next Steps:' section listing 2-3 specific, actionable recommendations based on this data.`,
+        },
+      ],
+      model: 'mixtral-8x7b-32768',
+      temperature: 0.7,
+      max_tokens: 500,
+    })
 
-    return result.response.text()
+    return message.choices[0]?.message?.content || ''
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Gemini API error: ${msg}`)
+    throw new Error(`Groq API error: ${msg}`)
   }
 }
 
@@ -96,8 +116,11 @@ export async function generateAnswerToQuestion(
       .map(m => `- ${m.metricName} (${m.channel}): ${m.currentValue}${m.unit ? ' ' + m.unit : ''} (${m.deltaPercent !== undefined ? (m.deltaPercent > 0 ? '+' : '') + m.deltaPercent.toFixed(1) + '%' : 'no change'})`)
       .join('\n')
 
-    const model = client.getGenerativeModel({ model: 'gemini-2.0-flash' })
-    const result = await model.generateContent(`You are a marketing analytics expert answering questions about marketing performance data.
+    const message = await client.chat.completions.create({
+      messages: [
+        {
+          role: 'user',
+          content: `You are a marketing analytics expert answering questions about marketing performance data.
 
 Project: ${projectName}
 Period: ${data.dateRange}
@@ -107,12 +130,18 @@ ${metricsText || 'No metrics available'}
 
 User Question: ${data.question}
 
-Provide a concise, data-driven answer (2-4 sentences). Reference specific metrics from the data above when relevant. Be direct and actionable.`)
+Provide a concise, data-driven answer (2-4 sentences). Reference specific metrics from the data above when relevant. Be direct and actionable.`,
+        },
+      ],
+      model: 'mixtral-8x7b-32768',
+      temperature: 0.7,
+      max_tokens: 300,
+    })
 
-    return result.response.text()
+    return message.choices[0]?.message?.content || ''
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Gemini API error: ${msg}`)
+    throw new Error(`Groq API error: ${msg}`)
   }
 }
 
@@ -130,8 +159,11 @@ export async function generateRecommendations(
       })
       .join('\n\n')
 
-    const model = client.getGenerativeModel({ model: 'gemini-2.0-flash' })
-    const result = await model.generateContent(`You are a marketing strategist. Based on this data for "${projectName}", provide exactly 3 prioritised recommendations in JSON format.
+    const message = await client.chat.completions.create({
+      messages: [
+        {
+          role: 'user',
+          content: `You are a marketing strategist. Based on this data for "${projectName}", provide exactly 3 prioritised recommendations in JSON format.
 
 Data:
 ${summaryText}
@@ -146,17 +178,23 @@ Return ONLY valid JSON array:
   }
 ]
 
-No markdown, no extra text, just the JSON array.`)
+No markdown, no extra text, just the JSON array.`,
+        },
+      ],
+      model: 'mixtral-8x7b-32768',
+      temperature: 0.7,
+      max_tokens: 800,
+    })
 
     try {
-      const text = result.response.text()
+      const text = message.choices[0]?.message?.content || ''
       return JSON.parse(text) as Recommendation[]
     } catch {
       return []
     }
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Gemini API error: ${msg}`)
+    throw new Error(`Groq API error: ${msg}`)
   }
 }
 
@@ -169,8 +207,11 @@ export async function generateExecutiveSummary(
       .map(m => `- ${m.metricName} (${m.channel}): ${m.currentValue}${m.unit ? ' ' + m.unit : ''} (${m.deltaPercent !== undefined ? (m.deltaPercent > 0 ? '+' : '') + m.deltaPercent.toFixed(1) + '%' : 'no change'})`)
       .join('\n')
 
-    const model = client.getGenerativeModel({ model: 'gemini-2.0-flash' })
-    const result = await model.generateContent(`You are a marketing analytics expert writing an executive summary for a client report.
+    const message = await client.chat.completions.create({
+      messages: [
+        {
+          role: 'user',
+          content: `You are a marketing analytics expert writing an executive summary for a client report.
 
 Project: ${projectName}
 
@@ -183,12 +224,18 @@ Write a 3-4 sentence executive summary that:
 3. Identifies main challenges or areas needing attention
 4. Sets the stage for detailed analysis below
 
-Be professional, data-driven, and concise. Focus on what matters most to the client.`)
+Be professional, data-driven, and concise. Focus on what matters most to the client.`,
+        },
+      ],
+      model: 'mixtral-8x7b-32768',
+      temperature: 0.7,
+      max_tokens: 400,
+    })
 
-    return result.response.text()
+    return message.choices[0]?.message?.content || ''
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Gemini API error: ${msg}`)
+    throw new Error(`Groq API error: ${msg}`)
   }
 }
 
@@ -201,8 +248,11 @@ export async function generateConclusions(
       .map(m => `- ${m.metricName} (${m.channel}): ${m.currentValue}${m.unit ? ' ' + m.unit : ''} (${m.deltaPercent !== undefined ? (m.deltaPercent > 0 ? '+' : '') + m.deltaPercent.toFixed(1) + '%' : 'no change'})`)
       .join('\n')
 
-    const model = client.getGenerativeModel({ model: 'gemini-2.0-flash' })
-    const result = await model.generateContent(`You are a marketing strategist writing conclusions and recommendations for a client report.
+    const message = await client.chat.completions.create({
+      messages: [
+        {
+          role: 'user',
+          content: `You are a marketing strategist writing conclusions and recommendations for a client report.
 
 Project: ${projectName}
 
@@ -215,12 +265,18 @@ Write conclusions and recommendations that:
 3. Provide 3-4 specific, actionable recommendations based on the data
 4. Include next steps and priority areas for focus
 
-Be strategic, specific, and actionable. Reference metrics when relevant.`)
+Be strategic, specific, and actionable. Reference metrics when relevant.`,
+        },
+      ],
+      model: 'mixtral-8x7b-32768',
+      temperature: 0.7,
+      max_tokens: 600,
+    })
 
-    return result.response.text()
+    return message.choices[0]?.message?.content || ''
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Gemini API error: ${msg}`)
+    throw new Error(`Groq API error: ${msg}`)
   }
 }
 

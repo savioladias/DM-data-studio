@@ -18,9 +18,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+  if (!process.env.GROQ_API_KEY) {
     return NextResponse.json(
-      { error: 'GOOGLE_GENERATIVE_AI_API_KEY not configured. Add your key to .env.local' },
+      { error: 'GROQ_API_KEY not configured. Add your key to .env.local' },
       { status: 503 }
     )
   }
