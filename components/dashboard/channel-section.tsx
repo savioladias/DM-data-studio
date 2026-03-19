@@ -108,21 +108,21 @@ export function ChannelSection({ projectId, channelId, metrics, dateRange }: Cha
           onClick={() => setCollapsed(c => !c)}
         >
           <div
-            className="h-3 w-3 rounded-sm flex items-center justify-center text-white text-[9px] font-semibold"
+            className="h-3 w-3 rounded-sm flex items-center justify-center text-white text-[9px] font-semibold flex-shrink-0"
             style={{ backgroundColor: channel.color }}
             title={channel.label}
           >
             {channel.label.charAt(0)}
           </div>
-          <h2 className="font-semibold text-base">{channel.label}</h2>
+          <h2 className="font-semibold text-base leading-tight">{channel.label}</h2>
           <Badge variant="outline" className="text-xs">{channel.category}</Badge>
           {positiveCount > 0 && (
-            <span className="text-xs text-emerald-500">↑{positiveCount}</span>
+            <span className="text-xs text-emerald-500 leading-tight">↑{positiveCount}</span>
           )}
           {negativeCount > 0 && (
-            <span className="text-xs text-red-500">↓{negativeCount}</span>
+            <span className="text-xs text-red-500 leading-tight">↓{negativeCount}</span>
           )}
-          {collapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+          {collapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" /> : <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
         </button>
 
         <div className="flex items-center gap-2">
