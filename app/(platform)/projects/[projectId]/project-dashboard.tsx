@@ -9,7 +9,13 @@ import { AnomalyBell, type Anomaly } from '@/components/dashboard/anomaly-bell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2, RefreshCw, Sparkles, AlertTriangle, Info, TrendingUp } from 'lucide-react'
+import { Loader2, RefreshCw, TrendingUp, ChevronDown } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { getChannel } from '@/lib/channels'
 import type { ChannelId } from '@/lib/channels'
 import type { Metric, DateRange } from '@/lib/types'
@@ -97,30 +103,50 @@ export function ProjectDashboard({ project, enabledChannels, recentInsights }: P
   const totalChannels = enabledChannels.length
   const connectedChannels = enabledChannels.filter(c => metrics[c]?.length > 0).length
 
-  const severityIcon = (s?: string) => {
-    if (s === 'critical') return <AlertTriangle className="h-4 w-4 text-red-500" />
-    if (s === 'warning') return <AlertTriangle className="h-4 w-4 text-yellow-500" />
-    return <Info className="h-4 w-4 text-blue-500" />
-  }
-
   return (
     <div className="p-6 space-y-8">
       {/* Page header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold">{project.clientName}</h1>
-            <p className="text-sm text-muted-foreground">
-              {totalChannels} channel{totalChannels !== 1 ? 's' : ''} • {connectedChannels} connected
-            </p>
+            <h1 className="text-3xl font-bold mb-2">{project.clientName}</h1>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  {totalChannels} channel{totalChannels !== 1 ? 's' : ''} • {connectedChannels} connected
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {enabledChannels.map(channelId => {
+                  const channel = getChannel(channelId)
+                  const hasData = metrics[channelId]?.length > 0
+                  if (!channel) return null
+                  return (
+                    <DropdownMenuItem key={channelId} className="flex items-center gap-2">
+                      <div
+                        className="h-3 w-3 rounded-sm flex items-center justify-center text-white text-[10px] font-semibold"
+                        style={{ backgroundColor: channel.color }}
+                      >
+                        {channel.label.charAt(0)}
+                      </div>
+                      <span>{channel.label}</span>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {hasData ? '✓ Connected' : '○ No data'}
+                      </span>
+                    </DropdownMenuItem>
+                  )
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground">
-              Updated {lastRefresh.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+              Updated {lastRefresh.toLocaleDateString('en-GB')} {lastRefresh.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
             </span>
             <AnomalyBell anomalies={anomalies} />
-            <Button variant="outline" size="sm" onClick={() => fetchMetrics(dateRange)} disabled={loading}>
+            <Button variant="outline" size="sm" onClick={() => fetchMetrics(dateRange)} disabled={loading} className="hover:bg-primary hover:text-primary-foreground">
               <RefreshCw className={cn('h-4 w-4 mr-2', loading && 'animate-spin')} />
               Refresh
             </Button>
@@ -133,31 +159,6 @@ export function ProjectDashboard({ project, enabledChannels, recentInsights }: P
         </div>
       </div>
 
-      {/* Connected channels pills - only show connected channels */}
-      {connectedChannels > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {enabledChannels.map(channelId => {
-            const channel = getChannel(channelId)
-            const hasData = metrics[channelId]?.length > 0
-            if (!hasData) return null
-            return channel ? (
-              <Badge
-                key={channelId}
-                className="text-sm gap-2 bg-white border border-black text-black px-3 py-2"
-              >
-                <div
-                  className="h-4 w-4 rounded-sm flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0"
-                  style={{ backgroundColor: channel.color }}
-                  title={channel.label}
-                >
-                  {channel.label.charAt(0)}
-                </div>
-                <span className="truncate">{channel.label}</span>
-              </Badge>
-            ) : null
-          })}
-        </div>
-      )}
 
       {/* Loading */}
       {loading ? (
@@ -170,12 +171,12 @@ export function ProjectDashboard({ project, enabledChannels, recentInsights }: P
           {/* Performance Summary Card */}
           {connectedChannels > 0 && (
             <Card>
-              <CardContent className="p-6">
-                <h2 className="font-semibold text-sm mb-4 flex items-center gap-2">
+              <CardContent className="p-4">
+                <h2 className="font-semibold text-sm mb-3 flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-primary" />
                   Overall Performance
                 </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Connected Channels</p>
                     <p className="text-2xl font-bold">{connectedChannels}</p>
@@ -239,34 +240,6 @@ export function ProjectDashboard({ project, enabledChannels, recentInsights }: P
           {/* Blended Ad Metrics Card */}
           <BlendedMetricsCard metrics={metrics} currency={project.currency} />
 
-          {/* Recent AI Insights panel (if any exist) */}
-          {recentInsights.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <h2 className="font-semibold">Recent AI Insights</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {recentInsights.slice(0, 4).map(insight => (
-                  <Card key={insight.id} className={cn(
-                    'border-l-4',
-                    insight.severity === 'critical' ? 'border-l-red-500' :
-                    insight.severity === 'warning' ? 'border-l-yellow-500' : 'border-l-primary'
-                  )}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-2">
-                        {severityIcon(insight.severity)}
-                        <div>
-                          <p className="font-medium text-sm">{insight.title}</p>
-                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{insight.body}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Channel sections — in specific order */}
           {(() => {

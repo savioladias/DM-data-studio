@@ -75,7 +75,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
   return (
     <div className="flex items-center gap-3">
       <Select value={value.preset} onValueChange={handlePresetChange}>
-        <SelectTrigger className="w-40">
+        <SelectTrigger className="w-40 hover:bg-primary hover:text-primary-foreground">
           <Calendar className="h-4 w-4 mr-2" />
           <SelectValue />
         </SelectTrigger>
