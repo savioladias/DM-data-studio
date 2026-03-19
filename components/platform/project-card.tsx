@@ -53,7 +53,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
                 size="lg"
                 className="mt-0.5 flex-shrink-0"
               />
-              <div className="min-w-0 pt-0">
+              <div className="min-w-0 pt-0 space-y-0">
                 <h3 className="font-semibold text-base group-hover:text-primary transition-colors duration-150 truncate">
                   {project.name}
                 </h3>
