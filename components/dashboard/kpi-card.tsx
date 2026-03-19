@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { TrendingUp, TrendingDown, Minus, Sparkles, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -92,22 +91,11 @@ export function KpiCard({
   return (
     <>
       <Card className="group hover:border-primary/30 transition-colors">
-        <CardContent className="p-4">
+        <CardContent className="p-3">
           <div className="flex items-start justify-between mb-3">
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
               {label}
             </p>
-            {aiAvailable && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-muted-foreground hover:text-primary"
-                onClick={fetchInsight}
-              >
-                <Sparkles className="h-3 w-3 mr-1" />
-                Explain
-              </Button>
-            )}
           </div>
 
           <div className="flex items-end justify-between">

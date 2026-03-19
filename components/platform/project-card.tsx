@@ -37,7 +37,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <Link href={`/projects/${project.id}`}>
-      <Card className="group relative cursor-pointer h-full flex flex-col overflow-hidden pt-0 hover:shadow-[0_4px_24px_oklch(0_0_0/12%),0_0_0_1px_oklch(0.585_0.233_277/20%)] dark:hover:shadow-[0_4px_24px_oklch(0_0_0/40%),0_0_0_1px_oklch(0.68_0.18_277/25%)] transition-all duration-250 ease-out">
+      <Card className="group relative cursor-pointer h-full flex flex-col overflow-hidden pt-0 hover:shadow-[0_4px_24px_oklch(0_0_0/12%),0_0_0_1px_oklch(0.57_0.24_25/20%)] dark:hover:shadow-[0_4px_24px_oklch(0_0_0/40%),0_0_0_1px_oklch(0.65_0.20_25/25%)] transition-all duration-250 ease-out">
         {/* Accent strip - uses project brandColor */}
         <div
           className="h-1 w-full flex-shrink-0 rounded-t-xl"
@@ -45,14 +45,15 @@ export function ProjectCard({ project }: ProjectCardProps) {
         />
 
         <CardHeader className="pb-4 pt-4">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 flex-1">
               <ProjectAvatar
                 logoUrl={project.logoUrl}
                 clientName={project.clientName}
                 size="lg"
+                className="mt-0.5 flex-shrink-0"
               />
-              <div className="min-w-0">
+              <div className="min-w-0 pt-0">
                 <h3 className="font-semibold text-base group-hover:text-primary transition-colors duration-150 truncate">
                   {project.name}
                 </h3>
