@@ -1,8 +1,7 @@
-import Groq from 'groq-sdk'
+import Anthropic from '@anthropic-ai/sdk'
 
-const client = new Groq({
-  apiKey: process.env.GROQ_API_KEY || '',
-  dangerouslyAllowBrowser: true,
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY || '',
 })
 
 export interface MetricContext {
@@ -45,7 +44,9 @@ export async function generateMetricInsight(metric: MetricContext): Promise<stri
       ? `${metric.deltaPercent > 0 ? '+' : ''}${metric.deltaPercent.toFixed(1)}% vs previous period`
       : 'no comparison data available'
 
-    const message = await client.chat.completions.create({
+    const message = await client.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 150,
       messages: [
         {
           role: 'user',
@@ -60,15 +61,13 @@ Trend: ${metric.trend || 'unknown'}
 Be specific, direct, and actionable. No fluff. Start with the most important observation.`,
         },
       ],
-      model: 'llama-3.3-70b-specdec',
-      temperature: 0.7,
-      max_tokens: 150,
     })
 
-    return message.choices[0]?.message?.content || ''
+    const textContent = message.content.find(block => block.type === 'text')
+    return textContent && textContent.type === 'text' ? textContent.text : ''
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Groq API error: ${msg}`)
+    throw new Error(`Claude API error: ${msg}`)
   }
 }
 
@@ -78,7 +77,9 @@ export async function generateChannelSummary(context: ChannelContext): Promise<s
       .map(m => `- ${m.metricName}: ${m.currentValue}${m.unit ? ' ' + m.unit : ''} (${m.deltaPercent !== undefined ? (m.deltaPercent > 0 ? '+' : '') + m.deltaPercent.toFixed(1) + '%' : 'no change data'})`)
       .join('\n')
 
-    const message = await client.chat.completions.create({
+    const message = await client.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 500,
       messages: [
         {
           role: 'user',
@@ -96,15 +97,13 @@ Write a 3-4 sentence summary covering: overall performance, the standout positiv
 End with a brief 'Recommended Next Steps:' section listing 2-3 specific, actionable recommendations based on this data.`,
         },
       ],
-      model: 'llama-3.3-70b-specdec',
-      temperature: 0.7,
-      max_tokens: 500,
     })
 
-    return message.choices[0]?.message?.content || ''
+    const textContent = message.content.find(block => block.type === 'text')
+    return textContent && textContent.type === 'text' ? textContent.text : ''
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Groq API error: ${msg}`)
+    throw new Error(`Claude API error: ${msg}`)
   }
 }
 
@@ -117,7 +116,9 @@ export async function generateAnswerToQuestion(
       .map(m => `- ${m.metricName} (${m.channel}): ${m.currentValue}${m.unit ? ' ' + m.unit : ''} (${m.deltaPercent !== undefined ? (m.deltaPercent > 0 ? '+' : '') + m.deltaPercent.toFixed(1) + '%' : 'no change'})`)
       .join('\n')
 
-    const message = await client.chat.completions.create({
+    const message = await client.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 300,
       messages: [
         {
           role: 'user',
@@ -134,15 +135,13 @@ User Question: ${data.question}
 Provide a concise, data-driven answer (2-4 sentences). Reference specific metrics from the data above when relevant. Be direct and actionable.`,
         },
       ],
-      model: 'llama-3.3-70b-specdec',
-      temperature: 0.7,
-      max_tokens: 300,
     })
 
-    return message.choices[0]?.message?.content || ''
+    const textContent = message.content.find(block => block.type === 'text')
+    return textContent && textContent.type === 'text' ? textContent.text : ''
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Groq API error: ${msg}`)
+    throw new Error(`Claude API error: ${msg}`)
   }
 }
 
@@ -160,7 +159,9 @@ export async function generateRecommendations(
       })
       .join('\n\n')
 
-    const message = await client.chat.completions.create({
+    const message = await client.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 800,
       messages: [
         {
           role: 'user',
@@ -182,20 +183,18 @@ Return ONLY valid JSON array:
 No markdown, no extra text, just the JSON array.`,
         },
       ],
-      model: 'llama-3.3-70b-specdec',
-      temperature: 0.7,
-      max_tokens: 800,
     })
 
     try {
-      const text = message.choices[0]?.message?.content || ''
+      const textContent = message.content.find(block => block.type === 'text')
+      const text = textContent && textContent.type === 'text' ? textContent.text : ''
       return JSON.parse(text) as Recommendation[]
     } catch {
       return []
     }
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Groq API error: ${msg}`)
+    throw new Error(`Claude API error: ${msg}`)
   }
 }
 
@@ -208,7 +207,9 @@ export async function generateExecutiveSummary(
       .map(m => `- ${m.metricName} (${m.channel}): ${m.currentValue}${m.unit ? ' ' + m.unit : ''} (${m.deltaPercent !== undefined ? (m.deltaPercent > 0 ? '+' : '') + m.deltaPercent.toFixed(1) + '%' : 'no change'})`)
       .join('\n')
 
-    const message = await client.chat.completions.create({
+    const message = await client.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 400,
       messages: [
         {
           role: 'user',
@@ -228,15 +229,13 @@ Write a 3-4 sentence executive summary that:
 Be professional, data-driven, and concise. Focus on what matters most to the client.`,
         },
       ],
-      model: 'llama-3.3-70b-specdec',
-      temperature: 0.7,
-      max_tokens: 400,
     })
 
-    return message.choices[0]?.message?.content || ''
+    const textContent = message.content.find(block => block.type === 'text')
+    return textContent && textContent.type === 'text' ? textContent.text : ''
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Groq API error: ${msg}`)
+    throw new Error(`Claude API error: ${msg}`)
   }
 }
 
@@ -249,7 +248,9 @@ export async function generateConclusions(
       .map(m => `- ${m.metricName} (${m.channel}): ${m.currentValue}${m.unit ? ' ' + m.unit : ''} (${m.deltaPercent !== undefined ? (m.deltaPercent > 0 ? '+' : '') + m.deltaPercent.toFixed(1) + '%' : 'no change'})`)
       .join('\n')
 
-    const message = await client.chat.completions.create({
+    const message = await client.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 600,
       messages: [
         {
           role: 'user',
@@ -269,15 +270,13 @@ Write conclusions and recommendations that:
 Be strategic, specific, and actionable. Reference metrics when relevant.`,
         },
       ],
-      model: 'llama-3.3-70b-specdec',
-      temperature: 0.7,
-      max_tokens: 600,
     })
 
-    return message.choices[0]?.message?.content || ''
+    const textContent = message.content.find(block => block.type === 'text')
+    return textContent && textContent.type === 'text' ? textContent.text : ''
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Groq API error: ${msg}`)
+    throw new Error(`Claude API error: ${msg}`)
   }
 }
 
