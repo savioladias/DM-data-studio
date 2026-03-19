@@ -60,7 +60,7 @@ Trend: ${metric.trend || 'unknown'}
 Be specific, direct, and actionable. No fluff. Start with the most important observation.`,
         },
       ],
-      model: 'llama-3.1-70b-versatile',
+      model: 'llama-3.3-70b-specdec',
       temperature: 0.7,
       max_tokens: 150,
     })
@@ -96,7 +96,7 @@ Write a 3-4 sentence summary covering: overall performance, the standout positiv
 End with a brief 'Recommended Next Steps:' section listing 2-3 specific, actionable recommendations based on this data.`,
         },
       ],
-      model: 'llama-3.1-70b-versatile',
+      model: 'llama-3.3-70b-specdec',
       temperature: 0.7,
       max_tokens: 500,
     })
@@ -134,7 +134,7 @@ User Question: ${data.question}
 Provide a concise, data-driven answer (2-4 sentences). Reference specific metrics from the data above when relevant. Be direct and actionable.`,
         },
       ],
-      model: 'llama-3.1-70b-versatile',
+      model: 'llama-3.3-70b-specdec',
       temperature: 0.7,
       max_tokens: 300,
     })
@@ -182,7 +182,7 @@ Return ONLY valid JSON array:
 No markdown, no extra text, just the JSON array.`,
         },
       ],
-      model: 'llama-3.1-70b-versatile',
+      model: 'llama-3.3-70b-specdec',
       temperature: 0.7,
       max_tokens: 800,
     })
@@ -228,7 +228,7 @@ Write a 3-4 sentence executive summary that:
 Be professional, data-driven, and concise. Focus on what matters most to the client.`,
         },
       ],
-      model: 'llama-3.1-70b-versatile',
+      model: 'llama-3.3-70b-specdec',
       temperature: 0.7,
       max_tokens: 400,
     })
@@ -269,7 +269,7 @@ Write conclusions and recommendations that:
 Be strategic, specific, and actionable. Reference metrics when relevant.`,
         },
       ],
-      model: 'llama-3.1-70b-versatile',
+      model: 'llama-3.3-70b-specdec',
       temperature: 0.7,
       max_tokens: 600,
     })
