@@ -160,6 +160,70 @@ No markdown, no extra text, just the JSON array.`)
   }
 }
 
+export async function generateExecutiveSummary(
+  projectName: string,
+  data: { metrics: MetricContext[] }
+): Promise<string> {
+  try {
+    const metricsText = data.metrics
+      .map(m => `- ${m.metricName} (${m.channel}): ${m.currentValue}${m.unit ? ' ' + m.unit : ''} (${m.deltaPercent !== undefined ? (m.deltaPercent > 0 ? '+' : '') + m.deltaPercent.toFixed(1) + '%' : 'no change'})`)
+      .join('\n')
+
+    const model = client.getGenerativeModel({ model: 'gemini-2.0-flash' })
+    const result = await model.generateContent(`You are a marketing analytics expert writing an executive summary for a client report.
+
+Project: ${projectName}
+
+Current Performance Metrics:
+${metricsText}
+
+Write a 3-4 sentence executive summary that:
+1. Provides an overview of overall performance across channels
+2. Highlights the key achievements and successes
+3. Identifies main challenges or areas needing attention
+4. Sets the stage for detailed analysis below
+
+Be professional, data-driven, and concise. Focus on what matters most to the client.`)
+
+    return result.response.text()
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    throw new Error(`Gemini API error: ${msg}`)
+  }
+}
+
+export async function generateConclusions(
+  projectName: string,
+  data: { metrics: MetricContext[] }
+): Promise<string> {
+  try {
+    const metricsText = data.metrics
+      .map(m => `- ${m.metricName} (${m.channel}): ${m.currentValue}${m.unit ? ' ' + m.unit : ''} (${m.deltaPercent !== undefined ? (m.deltaPercent > 0 ? '+' : '') + m.deltaPercent.toFixed(1) + '%' : 'no change'})`)
+      .join('\n')
+
+    const model = client.getGenerativeModel({ model: 'gemini-2.0-flash' })
+    const result = await model.generateContent(`You are a marketing strategist writing conclusions and recommendations for a client report.
+
+Project: ${projectName}
+
+Current Performance Metrics:
+${metricsText}
+
+Write conclusions and recommendations that:
+1. Summarize the key findings and patterns observed
+2. Explain what the data means for the business
+3. Provide 3-4 specific, actionable recommendations based on the data
+4. Include next steps and priority areas for focus
+
+Be strategic, specific, and actionable. Reference metrics when relevant.`)
+
+    return result.response.text()
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    throw new Error(`Gemini API error: ${msg}`)
+  }
+}
+
 export async function detectAnomalies(
   metrics: { key: string; values: number[]; current: number; label: string }[]
 ): Promise<Anomaly[]> {

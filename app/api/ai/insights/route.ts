@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { generateMetricInsight, generateChannelSummary, generateRecommendations, generateAnswerToQuestion } from '@/lib/ai'
+import { generateMetricInsight, generateChannelSummary, generateRecommendations, generateAnswerToQuestion, generateExecutiveSummary, generateConclusions } from '@/lib/ai'
 import { z } from 'zod'
 
 const insightSchema = z.object({
   projectId: z.string(),
-  type: z.enum(['metric', 'channel', 'recommendations']),
+  type: z.enum(['metric', 'channel', 'recommendations', 'executive_summary', 'conclusions']),
   channel: z.string().optional(),
   metricKey: z.string().optional(),
   data: z.any(),
@@ -65,6 +65,10 @@ export async function POST(request: Request) {
         })
       }
       return NextResponse.json({ recommendations })
+    } else if (type === 'executive_summary' && data) {
+      insightText = await generateExecutiveSummary(project.name, data)
+    } else if (type === 'conclusions' && data) {
+      insightText = await generateConclusions(project.name, data)
     }
 
     // Store insight in DB
