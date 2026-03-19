@@ -74,9 +74,8 @@ export function KpiCard({
 
       const data = await res.json()
       if (res.status === 503) {
-        // API key not configured
         setAiAvailable(false)
-        setAiInsight('AI features are not available. Please configure your Google Generative AI API key in .env.local')
+        setAiInsight(data.error || 'AI features are not available. Please ensure Ollama is running: https://ollama.ai')
       } else if (data.insight) {
         setAiInsight(data.insight)
         setAiAvailable(true)

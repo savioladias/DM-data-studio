@@ -84,7 +84,7 @@ export function ChannelSection({ projectId, channelId, metrics, dateRange }: Cha
       const data = await res.json()
       if (res.status === 503) {
         setAiAvailable(false)
-        setAiSummary('AI features are not available. Please configure your Google Generative AI API key.')
+        setAiSummary(data.error || 'AI features are not available. Please ensure Ollama is running: https://ollama.ai')
       } else {
         setAiAvailable(true)
         setAiSummary(data.insight ?? data.error ?? 'Unable to generate summary.')

@@ -96,7 +96,7 @@ export default function AIInsightsPage({ params }: PageProps) {
         setAiAvailable(false)
         setChannelAI(prev => ({
           ...prev,
-          [channelId]: { loading: false, text: 'AI features are not available. Please configure your Google Generative AI API key.' }
+          [channelId]: { loading: false, text: data.error || 'AI features are not available. Please ensure Ollama is running: https://ollama.ai' }
         }))
       } else if (data.insight) {
         setAiAvailable(true)
@@ -153,7 +153,7 @@ export default function AIInsightsPage({ params }: PageProps) {
       const data = await res.json()
       if (res.status === 503) {
         setAiAvailable(false)
-        setAnswer('AI features are not available. Please configure your Google Generative AI API key.')
+        setAnswer(data.error || 'AI features are not available. Please ensure Ollama is running: https://ollama.ai')
       } else if (!res.ok) {
         setAnswer(`Error: ${data.error || 'Failed to get answer'}`)
       } else {
@@ -191,10 +191,12 @@ export default function AIInsightsPage({ params }: PageProps) {
               <div>
                 <p className="font-medium text-sm text-yellow-900 mb-1">AI Features Unavailable</p>
                 <p className="text-sm text-yellow-800">
-                  Please configure your Google Generative AI API key in <code className="bg-yellow-900/10 px-2 py-1 rounded">.env.local</code> to enable AI insights. Get a free API key from{' '}
-                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
-                    Google AI Studio
-                  </a>.
+                  Ollama is not running. Please start Ollama to enable AI insights:
+                  <ol className="list-decimal list-inside mt-2 space-y-1">
+                    <li>Download Ollama from <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">ollama.ai</a></li>
+                    <li>Run: <code className="bg-yellow-900/10 px-2 py-1 rounded">ollama pull mistral</code></li>
+                    <li>Run: <code className="bg-yellow-900/10 px-2 py-1 rounded">ollama serve</code></li>
+                  </ol>
                 </p>
               </div>
             </div>
