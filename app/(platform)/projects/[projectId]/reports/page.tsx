@@ -674,9 +674,9 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                     onCheckedChange={() => toggleChannel(m.channel)}
                     className="mt-0.5"
                   />
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 space-y-0">
                     <p className="text-sm font-medium truncate">{m.label}</p>
-                    <p className="text-xs text-muted-foreground -mt-1">{m.metrics.length} metrics</p>
+                    <p className="text-xs text-muted-foreground">{m.metrics.length} metrics</p>
                   </div>
                 </label>
               ))}
