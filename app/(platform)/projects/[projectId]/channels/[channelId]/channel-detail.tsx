@@ -154,15 +154,15 @@ export function ChannelDetail({
             </Button>
           </Link>
           <div>
-            <div className="flex items-center gap-3 mb-1">
+            <div className="flex items-center gap-3 mb-1 py-0">
               <div
-                className="h-5 w-5 rounded-md flex items-center justify-center text-white text-xs font-semibold"
+                className="h-6 w-6 rounded-md flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
                 style={{ backgroundColor: channel?.color || '#ccc' }}
                 title={channel?.label}
               >
                 {channel?.label.charAt(0) || 'C'}
               </div>
-              <h1 className="text-2xl font-bold">{channel?.label || channelId}</h1>
+              <h1 className="text-2xl font-bold leading-none m-0">{channel?.label || channelId}</h1>
             </div>
             <p className="text-sm text-muted-foreground">
               {projectName} · {clientName}
