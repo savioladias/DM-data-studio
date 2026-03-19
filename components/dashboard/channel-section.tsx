@@ -104,23 +104,23 @@ export function ChannelSection({ projectId, channelId, metrics, dateRange }: Cha
       {/* Section header */}
       <div className="flex items-center justify-between">
         <button
-          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity py-0"
           onClick={() => setCollapsed(c => !c)}
         >
           <div
-            className="h-3 w-3 rounded-sm flex items-center justify-center text-white text-[9px] font-semibold flex-shrink-0"
+            className="h-4 w-4 rounded-sm flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0"
             style={{ backgroundColor: channel.color }}
             title={channel.label}
           >
             {channel.label.charAt(0)}
           </div>
-          <h2 className="font-semibold text-base leading-tight">{channel.label}</h2>
+          <h2 className="font-semibold text-base leading-none m-0">{channel.label}</h2>
           <Badge variant="outline" className="text-xs">{channel.category}</Badge>
           {positiveCount > 0 && (
-            <span className="text-xs text-emerald-500 leading-tight">↑{positiveCount}</span>
+            <span className="text-xs text-emerald-500 leading-none">↑{positiveCount}</span>
           )}
           {negativeCount > 0 && (
-            <span className="text-xs text-red-500 leading-tight">↓{negativeCount}</span>
+            <span className="text-xs text-red-500 leading-none">↓{negativeCount}</span>
           )}
           {collapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" /> : <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
         </button>
