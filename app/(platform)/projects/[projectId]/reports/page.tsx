@@ -859,15 +859,15 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                   <Card key={channel.channel}>
                     <CardHeader>
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 py-0">
                           <div
-                            className="h-5 w-5 rounded-md flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
+                            className="h-6 w-6 rounded-md flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
                             style={{ backgroundColor: getChannel(channel.channel)?.color }}
                           >
                             {getChannel(channel.channel)?.label.charAt(0) || 'C'}
                           </div>
                           <div>
-                            <CardTitle className="text-base">{channel.label}</CardTitle>
+                            <CardTitle className="text-base leading-none m-0">{channel.label}</CardTitle>
                             <CardDescription className="text-xs">
                               {channel.metrics.length} metrics · {posCount} positive · {negCount} declining
                             </CardDescription>
