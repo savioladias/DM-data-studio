@@ -4,6 +4,9 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'mistral'
 
 async function callOllama(prompt: string, maxTokens: number = 500): Promise<string> {
   try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
+
     const response = await fetch(OLLAMA_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -13,7 +16,10 @@ async function callOllama(prompt: string, maxTokens: number = 500): Promise<stri
         stream: false,
         num_predict: maxTokens,
       }),
+      signal: controller.signal,
     })
+
+    clearTimeout(timeoutId)
 
     if (!response.ok) {
       throw new Error(`Ollama API error: ${response.statusText}`)

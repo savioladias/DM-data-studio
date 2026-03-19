@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Loader2, Link as LinkIcon, CheckCircle, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -62,14 +61,18 @@ export function ChannelConnectionsSection({ projectId, enabledChannels }: Channe
   const handleConnect = async (channelId: ChannelId) => {
     setConnecting(channelId)
     try {
-      const res = await fetch(`/api/integrations/authorize?channel=${channelId}&projectId=${projectId}`)
-      const data = await res.json()
+      const res = await fetch(`/api/integrations/authorize?platform=${channelId}&projectId=${projectId}`)
 
-      if (data.authUrl) {
-        // Redirect to OAuth flow
-        window.location.href = data.authUrl
+      if (res.status === 302 || res.redirected) {
+        // Redirect happened automatically, get the final URL
+        window.location.href = res.url
       } else {
-        toast.error(`Failed to connect ${getChannel(channelId)?.label}`)
+        const data = await res.json()
+        if (res.status === 500 || res.status === 400) {
+          toast.error(data.message || `Failed to connect ${getChannel(channelId)?.label}`)
+        } else {
+          toast.error(`Failed to connect ${getChannel(channelId)?.label}`)
+        }
       }
     } catch (error) {
       toast.error('Failed to initiate connection')

@@ -31,9 +31,11 @@ export function PlatformSidebar({ projects, user }: PlatformSidebarProps) {
   return (
     <div className="flex h-screen w-64 flex-col border-r border-border bg-card">
       {/* Logo */}
-      <div className="flex items-center gap-2 px-4 py-5 border-b border-border">
-        <BarChart3 className="h-6 w-6 text-primary" />
-        <span className="font-bold text-lg">DM Data Studio</span>
+      <div className="flex items-center gap-2.5 px-4 py-5 border-b border-border bg-gradient-to-b from-accent/40 to-transparent dark:from-accent/30 dark:to-transparent">
+        <div className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-primary text-primary-foreground shadow-[0_1px_3px_var(--glow-primary)]">
+          <BarChart3 className="h-4 w-4" />
+        </div>
+        <span className="font-bold text-base tracking-tight">DM Data Studio</span>
       </div>
 
       {/* Main nav */}
@@ -41,20 +43,20 @@ export function PlatformSidebar({ projects, user }: PlatformSidebarProps) {
         <Link
           href="/"
           className={cn(
-            'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
+            'flex items-center gap-2 rounded-lg text-sm transition-colors duration-150 relative',
             pathname === '/'
-              ? 'bg-primary/10 text-primary font-medium'
-              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              ? 'bg-accent/60 text-primary font-medium dark:bg-accent/50 pl-[10px] border-l-2 border-primary'
+              : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground dark:hover:bg-accent/30 px-3 py-2'
           )}
         >
-          <LayoutDashboard className="h-4 w-4" />
-          All Projects
+          <LayoutDashboard className="h-4 w-4 flex-shrink-0" />
+          <span className={cn(pathname === '/' ? 'py-2' : '')}>All Projects</span>
         </Link>
 
         {/* Projects list */}
         {projects.length > 0 && (
           <div className="mt-4">
-            <p className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <p className="px-3 mb-1.5 text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-widest">
               Projects
             </p>
             <div className="space-y-1">
@@ -65,15 +67,15 @@ export function PlatformSidebar({ projects, user }: PlatformSidebarProps) {
                     key={project.id}
                     href={`/projects/${project.id}`}
                     className={cn(
-                      'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
+                      'flex items-center gap-2 rounded-lg text-sm transition-colors duration-150 relative',
                       isActive
-                        ? 'bg-primary/10 text-primary font-medium'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        ? 'bg-accent/60 text-primary font-medium dark:bg-accent/50 pl-[10px] border-l-2 border-primary py-2'
+                        : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground dark:hover:bg-accent/30 px-3 py-2'
                     )}
                   >
                     <span
-                      className="h-2 w-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: project.brandColor }}
+                      className="h-2 w-2 rounded-full flex-shrink-0 ring-1 ring-offset-1 ring-offset-transparent"
+                      style={{ backgroundColor: project.brandColor, '--tw-ring-color': project.brandColor + '40' } as React.CSSProperties}
                     />
                     <span className="truncate">{project.name}</span>
                   </Link>
@@ -85,7 +87,7 @@ export function PlatformSidebar({ projects, user }: PlatformSidebarProps) {
 
         <Link
           href="/projects/new"
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors mt-2"
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent/40 hover:text-foreground dark:hover:bg-accent/30 transition-colors duration-150 mt-2"
         >
           <Plus className="h-4 w-4" />
           New Project
@@ -93,10 +95,10 @@ export function PlatformSidebar({ projects, user }: PlatformSidebarProps) {
       </div>
 
       {/* User footer */}
-      <div className="border-t border-border p-3">
+      <div className="border-t border-border p-3 bg-gradient-to-t from-accent/20 to-transparent dark:from-accent/15 dark:to-transparent">
         <div className="flex items-center gap-3 mb-2">
           <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
+            <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
               {initials}
             </AvatarFallback>
           </Avatar>

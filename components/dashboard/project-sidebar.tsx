@@ -50,16 +50,17 @@ export function ProjectSidebar({ projectId, projectName, clientName, logoUrl, br
   return (
     <div className="flex h-screen w-56 flex-col border-r border-border bg-card">
       {/* Project header */}
-      <div className="flex items-center gap-2 px-4 py-4 border-b border-border">
+      <div className="flex items-center gap-2 px-4 py-4 border-b border-border bg-gradient-to-b from-accent/30 to-transparent dark:from-accent/20 dark:to-transparent">
         <ProjectAvatar
           logoUrl={logoUrl}
           clientName={clientName}
           size="sm"
         />
         <div className="min-w-0">
-          <p className="text-sm font-semibold truncate">{projectName}</p>
-          <Link href="/" className="text-xs text-muted-foreground hover:text-primary transition-colors">
-            ← All projects
+          <p className="text-sm font-semibold truncate leading-tight">{projectName}</p>
+          <Link href="/" className="text-[11px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-0.5 group/back">
+            <span className="group-hover/back:-translate-x-0.5 transition-transform duration-150">←</span>
+            {' '}All projects
           </Link>
         </div>
       </div>
@@ -75,10 +76,10 @@ export function ProjectSidebar({ projectId, projectName, clientName, logoUrl, br
               <Link
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
+                  'flex items-center gap-2 rounded-lg text-sm transition-colors duration-150 relative',
                   isActive
-                    ? 'bg-primary/10 text-primary font-medium'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    ? 'bg-accent/60 text-primary font-medium dark:bg-accent/50 pl-[10px] border-l-2 border-primary py-2'
+                    : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground dark:hover:bg-accent/30 px-3 py-2'
                 )}
               >
                 {item.icon}
