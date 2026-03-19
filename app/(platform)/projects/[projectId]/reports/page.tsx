@@ -668,10 +668,11 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
             </CardHeader>
             <CardContent className="space-y-3">
               {metrics.map(m => (
-                <label key={m.channel} className="flex items-center gap-3 cursor-pointer hover:bg-muted p-2 rounded transition-colors">
+                <label key={m.channel} className="flex items-start gap-3 cursor-pointer hover:bg-muted p-2 rounded transition-colors">
                   <Checkbox
                     checked={selectedChannels.includes(m.channel)}
                     onCheckedChange={() => toggleChannel(m.channel)}
+                    className="mt-0.5"
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{m.label}</p>
