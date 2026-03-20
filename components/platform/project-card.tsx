@@ -49,7 +49,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
                 <p className="text-sm text-muted-foreground truncate">{project.clientName}</p>
               </div>
             </div>
-            <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-all duration-200 flex-shrink-0 mt-0.5 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+            <ArrowUpRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-all duration-200 flex-shrink-0 mt-0.5 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </div>
           {project.industry && (
             <Badge variant="outline" className="w-fit text-xs font-normal bg-accent/40 border-border/50 text-muted-foreground dark:bg-accent/30">
