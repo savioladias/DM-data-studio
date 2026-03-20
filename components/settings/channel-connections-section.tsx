@@ -143,11 +143,6 @@ export function ChannelConnectionsSection({ projectId, enabledChannels }: Channe
                       {!isConnected && (
                         <p className="text-xs text-amber-600">Not connected</p>
                       )}
-                      {connection?.expiresAt && (
-                        <p className="text-xs text-muted-foreground">
-                          Expires: {new Date(connection.expiresAt).toLocaleDateString()}
-                        </p>
-                      )}
                     </div>
                   </div>
 

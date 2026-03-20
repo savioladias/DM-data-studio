@@ -366,7 +366,7 @@ async function fetchMetricsForChannel(
     // Fetch Google Search Console data
     if (channel === 'GOOGLE_SEARCH_CONSOLE') {
       if (!credential.accountId || credential.accountId === 'pending-site-selection') {
-        return generateMockMetrics(channel)
+        return [] // Return empty array instead of mock data
       }
 
       const gscData = await fetchGSCMetrics({
@@ -419,7 +419,7 @@ async function fetchMetricsForChannel(
     // Fetch LinkedIn Organic data
     if (channel === 'LINKEDIN_ORGANIC') {
       if (!credential.accountId || credential.accountId === 'pending-org-selection') {
-        return generateMockMetrics(channel)
+        return [] // Return empty array instead of mock data
       }
 
       const linkedinData = await fetchLinkedInMetrics({
@@ -470,7 +470,7 @@ async function fetchMetricsForChannel(
     // Fetch Facebook Organic data
     if (channel === 'FACEBOOK') {
       if (!credential.accountId || credential.accountId === 'pending-page-selection') {
-        return generateMockMetrics(channel)
+        return [] // Return empty array instead of mock data
       }
 
       const facebookData = await fetchFacebookMetrics({
@@ -521,7 +521,7 @@ async function fetchMetricsForChannel(
     // Fetch Instagram Organic data
     if (channel === 'INSTAGRAM') {
       if (!credential.accountId || credential.accountId === 'pending-page-selection') {
-        return generateMockMetrics(channel)
+        return [] // Return empty array instead of mock data
       }
 
       const instagramData = await fetchInstagramMetrics({
@@ -581,7 +581,7 @@ async function fetchMetricsForChannel(
     // Fetch YouTube data
     if (channel === 'YOUTUBE') {
       if (!credential.accountId || credential.accountId === 'pending-channel-selection') {
-        return generateMockMetrics(channel)
+        return [] // Return empty array instead of mock data
       }
 
       const youtubeData = await fetchYouTubeMetrics({
