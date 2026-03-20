@@ -61,24 +61,14 @@ export function ChannelConnectionsSection({ projectId, enabledChannels }: Channe
   const handleConnect = async (channelId: ChannelId) => {
     setConnecting(channelId)
     try {
-      const res = await fetch(`/api/integrations/authorize?platform=${channelId}&projectId=${projectId}`)
-
-      if (res.status === 302 || res.redirected) {
-        // Redirect happened automatically, get the final URL
-        window.location.href = res.url
-      } else {
-        const data = await res.json()
-        if (res.status === 500 || res.status === 400) {
-          toast.error(data.message || `Failed to connect ${getChannel(channelId)?.label}`)
-        } else {
-          toast.error(`Failed to connect ${getChannel(channelId)?.label}`)
-        }
-      }
+      // Use a direct window navigation instead of fetch for OAuth flow
+      // This properly handles external redirects without CORS issues
+      const authUrl = `/api/integrations/authorize?platform=${channelId}&projectId=${projectId}`
+      window.location.href = authUrl
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error'
       console.error('Connection error:', errorMsg)
       toast.error(`Failed to initiate connection: ${errorMsg}`)
-    } finally {
       setConnecting(null)
     }
   }
