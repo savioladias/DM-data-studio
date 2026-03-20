@@ -26,11 +26,6 @@ export function ProjectCard({ project }: ProjectCardProps) {
     .map(c => getChannel(c.channel as ChannelId))
     .filter(Boolean)
 
-  const lastUpdated = new Date(project.updatedAt).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-  })
-
   // Limit to 4 channels with "+X more" indicator
   const visibleChannels = channels.slice(0, 4)
   const hiddenChannelsCount = channels.length - 4
@@ -83,11 +78,6 @@ export function ProjectCard({ project }: ProjectCardProps) {
               )}
             </div>
           )}
-
-          {/* Updated date - anchored to bottom */}
-          <div className="mt-auto pt-3 border-t border-border/20">
-            <p className="text-xs text-muted-foreground/70">Updated {lastUpdated}</p>
-          </div>
         </CardContent>
       </Card>
     </Link>
