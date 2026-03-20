@@ -1,6 +1,5 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
-import { db } from '@/lib/db'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { JoinRequestsSection } from '@/components/profile/join-requests-section'
@@ -11,14 +10,8 @@ export default async function ProfilePage() {
     redirect('/login')
   }
 
-  const user = await db.user.findUnique({
-    where: { id: session.user.id },
-    select: { id: true, name: true, email: true, isAdmin: true },
-  })
-
-  if (!user) {
-    redirect('/login')
-  }
+  const user = session.user
+  const isAdmin = (user as any).isAdmin || false
 
   const initials = user.name
     ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -48,7 +41,7 @@ export default async function ProfilePage() {
                 <p className="text-sm text-muted-foreground">Email</p>
                 <p className="text-lg font-medium">{user.email}</p>
               </div>
-              {user.isAdmin && (
+              {isAdmin && (
                 <div>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                     Admin
@@ -61,7 +54,7 @@ export default async function ProfilePage() {
       </Card>
 
       {/* Join Requests Section (Admin only) */}
-      {user.isAdmin && <JoinRequestsSection />}
+      {isAdmin && <JoinRequestsSection />}
     </div>
   )
 }
