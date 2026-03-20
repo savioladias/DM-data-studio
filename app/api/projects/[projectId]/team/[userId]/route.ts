@@ -4,7 +4,7 @@ import { db } from '@/lib/db'
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { projectId: string; userId: string } }
+  { params }: { params: Promise<{ projectId: string; userId: string }> }
 ) {
   try {
     const session = await auth()
@@ -18,12 +18,13 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const { projectId, userId } = await params
     // Remove user from project
     await db.projectUser.delete({
       where: {
         projectId_userId: {
-          projectId: params.projectId,
-          userId: params.userId,
+          projectId,
+          userId,
         },
       },
     })

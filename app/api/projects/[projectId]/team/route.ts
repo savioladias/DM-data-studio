@@ -9,7 +9,7 @@ const addUserSchema = z.object({
 
 export async function GET(
   request: Request,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
     const session = await auth()
@@ -23,9 +23,10 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const { projectId } = await params
     // Get project team members
     const projectUsers = await db.projectUser.findMany({
-      where: { projectId: params.projectId },
+      where: { projectId },
       include: {
         user: {
           select: { id: true, name: true, email: true },
@@ -41,7 +42,7 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
     const session = await auth()
@@ -55,6 +56,7 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const { projectId } = await params
     const body = await request.json()
     const { userId } = addUserSchema.parse(body)
 
@@ -62,7 +64,7 @@ export async function POST(
     const existing = await db.projectUser.findUnique({
       where: {
         projectId_userId: {
-          projectId: params.projectId,
+          projectId,
           userId,
         },
       },
@@ -75,7 +77,7 @@ export async function POST(
     // Add user to project
     const projectUser = await db.projectUser.create({
       data: {
-        projectId: params.projectId,
+        projectId,
         userId,
       },
       include: {
