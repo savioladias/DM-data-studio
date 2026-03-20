@@ -31,7 +31,7 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: FormData) => {
     setLoading(true)
-    const res = await fetch('/api/register', {
+    const res = await fetch('/api/join-request', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -39,18 +39,13 @@ export default function RegisterPage() {
 
     if (!res.ok) {
       const err = await res.json()
-      toast.error(err.error ?? 'Registration failed')
+      toast.error(err.error ?? 'Request failed')
       setLoading(false)
       return
     }
 
-    toast.success('Account created! Signing you in...')
-    const { signIn } = await import('next-auth/react')
-    await signIn('credentials', {
-      email: data.email,
-      password: data.password,
-      callbackUrl: '/',
-    })
+    toast.success('Request sent! Waiting for admin approval...')
+    router.push('/join-request-pending')
   }
 
   return (
@@ -61,13 +56,13 @@ export default function RegisterPage() {
             <BarChart3 className="h-8 w-8 text-primary" />
             <span className="text-2xl font-bold">DM Data Studio</span>
           </div>
-          <p className="text-muted-foreground text-sm">Create your account</p>
+          <p className="text-muted-foreground text-sm">Join our team</p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Get started</CardTitle>
-            <CardDescription>Create your DM Data Studio account</CardDescription>
+            <CardTitle>Request to join</CardTitle>
+            <CardDescription>Submit your information to join DM Data Studio</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -91,12 +86,12 @@ export default function RegisterPage() {
 
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create account
+                Submit request
               </Button>
             </form>
 
             <p className="mt-4 text-center text-sm text-muted-foreground">
-              Already have an account?{' '}
+              Already approved?{' '}
               <Link href="/login" className="text-primary hover:underline">
                 Sign in
               </Link>

@@ -21,6 +21,7 @@ import { toast } from 'sonner'
 import { ProjectAvatar } from '@/components/project-avatar'
 import { ChannelConnectionsSection } from '@/components/settings/channel-connections-section'
 import { ScheduledReportsSection } from '@/components/settings/scheduled-reports-section'
+import { ProjectTeamSection } from '@/components/settings/project-team-section'
 import { INDUSTRIES, CURRENCIES } from '@/lib/constants'
 import { CHANNEL_GROUPS, CHANNEL_CATEGORIES, getChannel } from '@/lib/channels'
 import type { ChannelId, ChannelCategory } from '@/lib/channels'
@@ -508,6 +509,9 @@ export default function ProjectSettingsPage() {
         projectId={projectId}
         enabledChannels={selectedChannels as ChannelId[]}
       />
+
+      {/* Project Team Section */}
+      <ProjectTeamSection projectId={projectId} />
 
       {/* Delete Project Card */}
       <Card className="border-red-500/20 bg-red-50/50 dark:bg-red-950/20">
