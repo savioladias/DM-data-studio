@@ -96,7 +96,7 @@ export function PlatformSidebar({ projects, user }: PlatformSidebarProps) {
 
       {/* User footer */}
       <div className="border-t border-border p-3 bg-gradient-to-t from-accent/20 to-transparent dark:from-accent/15 dark:to-transparent">
-        <div className="flex items-center gap-3 mb-2">
+        <Link href="/profile" className="flex items-center gap-3 mb-2 rounded-lg hover:bg-accent/30 p-2 -m-2 transition-colors">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
               {initials}
@@ -106,7 +106,7 @@ export function PlatformSidebar({ projects, user }: PlatformSidebarProps) {
             <p className="text-sm font-medium truncate">{user.name ?? 'User'}</p>
             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
           </div>
-        </div>
+        </Link>
         <div className="flex gap-1">
           <Button variant="ghost" size="sm" className="flex-1 justify-start gap-2 text-muted-foreground" asChild>
             <Link href="/settings">

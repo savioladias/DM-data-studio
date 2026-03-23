@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { format, subDays, startOfYear } from 'date-fns'
 import { ChannelSection } from '@/components/dashboard/channel-section'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
@@ -44,6 +45,7 @@ interface ProjectDashboardProps {
 }
 
 export function ProjectDashboard({ project, enabledChannels, recentInsights }: ProjectDashboardProps) {
+  const router = useRouter()
   const [metrics, setMetrics] = useState<Record<string, Metric[]>>({})
   const [loading, setLoading] = useState(true)
   const [lastRefresh, setLastRefresh] = useState(new Date())
@@ -290,7 +292,11 @@ export function ProjectDashboard({ project, enabledChannels, recentInsights }: P
                 Connect your marketing accounts in project settings to start pulling real data.
                 Metrics will appear here once connected.
               </p>
-              <Button variant="outline" className="mt-4">
+              <Button
+                variant="outline"
+                className="mt-4 cursor-pointer"
+                onClick={() => router.push(`/projects/${project.id}/settings`)}
+              >
                 Go to Settings
               </Button>
             </div>

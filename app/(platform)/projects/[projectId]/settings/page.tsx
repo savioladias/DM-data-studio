@@ -21,6 +21,7 @@ import { toast } from 'sonner'
 import { ProjectAvatar } from '@/components/project-avatar'
 import { ChannelConnectionsSection } from '@/components/settings/channel-connections-section'
 import { ScheduledReportsSection } from '@/components/settings/scheduled-reports-section'
+import { ProjectTeamSection } from '@/components/settings/project-team-section'
 import { INDUSTRIES, CURRENCIES } from '@/lib/constants'
 import { CHANNEL_GROUPS, CHANNEL_CATEGORIES, getChannel } from '@/lib/channels'
 import type { ChannelId, ChannelCategory } from '@/lib/channels'
@@ -255,32 +256,32 @@ export default function ProjectSettingsPage() {
                 />
               </div>
               <div className="flex-1">
-                <label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    disabled={uploadingLogo}
-                    className="hidden"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={uploadingLogo}
-                  >
-                    {uploadingLogo ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload Logo
-                      </>
-                    )}
-                  </Button>
-                </label>
+                <input
+                  id="logo-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  disabled={uploadingLogo}
+                  className="hidden"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadingLogo}
+                  onClick={() => document.getElementById('logo-upload')?.click()}
+                >
+                  {uploadingLogo ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Logo
+                    </>
+                  )}
+                </Button>
                 <p className="text-xs text-muted-foreground mt-2">PNG, JPG, or WebP. Max 2MB.</p>
               </div>
             </div>
@@ -508,6 +509,9 @@ export default function ProjectSettingsPage() {
         projectId={projectId}
         enabledChannels={selectedChannels as ChannelId[]}
       />
+
+      {/* Project Team Section */}
+      <ProjectTeamSection projectId={projectId} />
 
       {/* Delete Project Card */}
       <Card className="border-red-500/20 bg-red-50/50 dark:bg-red-950/20">
