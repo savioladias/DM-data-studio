@@ -247,14 +247,12 @@ export default function ProjectSettingsPage() {
           <div className="space-y-3">
             <Label>Company Logo</Label>
             <div className="flex items-start gap-4">
-              <div className={logoUrl ? 'h-20 w-20 rounded-lg border border-border bg-muted overflow-hidden' : 'h-20 w-20 rounded-lg border border-dashed border-border'}>
-                <ProjectAvatar
-                  logoUrl={logoUrl}
-                  clientName={formData.clientName}
-                  size="lg"
-                  className={logoUrl ? 'h-20 w-20' : ''}
-                />
-              </div>
+              <ProjectAvatar
+                logoUrl={logoUrl}
+                clientName={formData.clientName}
+                size="lg"
+                className="h-20 w-20 border border-dashed border-border text-2xl"
+              />
               <div className="flex-1">
                 <input
                   id="logo-upload"
@@ -355,27 +353,6 @@ export default function ProjectSettingsPage() {
               onChange={e => setFormData(d => ({ ...d, website: e.target.value }))}
               placeholder="https://example.com"
             />
-          </div>
-
-          {/* Brand Color */}
-          <div className="space-y-2">
-            <Label htmlFor="brandColor">Brand Colour</Label>
-            <div className="flex items-center gap-2">
-              <input
-                id="brandColor"
-                type="color"
-                value={formData.brandColor}
-                onChange={e => setFormData(d => ({ ...d, brandColor: e.target.value }))}
-                className="h-10 w-12 rounded cursor-pointer border border-border bg-transparent"
-              />
-              <Input
-                value={formData.brandColor}
-                onChange={e => setFormData(d => ({ ...d, brandColor: e.target.value }))}
-                className="font-mono text-sm flex-1"
-                maxLength={7}
-                placeholder="#6366f1"
-              />
-            </div>
           </div>
 
           {/* Zoho Project ID */}
@@ -505,10 +482,10 @@ export default function ProjectSettingsPage() {
       />
 
       {/* Scheduled Reports Section */}
-      <ScheduledReportsSection
+      {/* <ScheduledReportsSection
         projectId={projectId}
         enabledChannels={selectedChannels as ChannelId[]}
-      />
+      /> */}
 
       {/* Project Team Section */}
       <ProjectTeamSection projectId={projectId} />

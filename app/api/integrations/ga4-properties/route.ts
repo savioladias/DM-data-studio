@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { projectId, propertyId } = body
+    const { projectId, propertyId, displayName } = body
 
     if (!projectId || !propertyId) {
       return NextResponse.json(
@@ -109,6 +109,7 @@ export async function POST(req: NextRequest) {
       where: { id: gaCredential.id },
       data: {
         accountId: propertyId,
+        accountName: displayName,
       },
     })
 

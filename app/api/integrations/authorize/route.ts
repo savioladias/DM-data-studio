@@ -52,11 +52,11 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    // Get OAuth authorization URL and return it as JSON for client-side redirect
+    // Get OAuth authorization URL and redirect the user
     console.log('Getting auth URL for platform:', platform)
     const authUrl = getAuthorizationUrl(platform, projectId)
     console.log('Auth URL:', authUrl.substring(0, 100) + '...')
-    return NextResponse.json({ url: authUrl })
+    return NextResponse.redirect(authUrl)
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
     console.error('Authorization error:', errorMsg)

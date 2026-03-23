@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { getChannel } from '@/lib/channels'
 import type { ChannelId } from '@/lib/channels'
 import { cn } from '@/lib/utils'
+import { GA4PropertyPicker } from '@/components/ga4-property-picker'
 
 interface ChannelConnection {
   channel: ChannelId
@@ -27,10 +28,22 @@ export function ChannelConnectionsSection({ projectId, enabledChannels }: Channe
   const [connections, setConnections] = useState<Map<ChannelId, ChannelConnection>>(new Map())
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState<ChannelId | null>(null)
+  const [ga4PickerOpen, setGa4PickerOpen] = useState(false)
+  const pickerAutoOpened = useRef(false)
 
   useEffect(() => {
     fetchConnections()
   }, [projectId, enabledChannels])
+
+  // Auto-open GA4 picker if just connected via OAuth
+  useEffect(() => {
+    if (pickerAutoOpened.current) return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('connected') === 'GOOGLE_ANALYTICS' && params.get('success') === 'true') {
+      pickerAutoOpened.current = true
+      setGa4PickerOpen(true)
+    }
+  }, [])
 
   const fetchConnections = async () => {
     setLoading(true)
@@ -135,10 +148,13 @@ export function ChannelConnectionsSection({ projectId, enabledChannels }: Channe
                           <AlertCircle className="h-4 w-4 text-amber-600" />
                         )}
                       </div>
-                      {isConnected && connection?.accountName && (
+                      {isConnected && connection?.accountId && connection.accountId !== 'pending-property-selection' && connection?.accountName && (
                         <p className="text-xs text-muted-foreground truncate">
-                          Connected: {connection.accountName}
+                          {connection.accountName}
                         </p>
+                      )}
+                      {isConnected && channelId === 'GOOGLE_ANALYTICS' && (!connection?.accountId || connection.accountId === 'pending-property-selection') && (
+                        <p className="text-xs text-amber-600">No property selected</p>
                       )}
                       {!isConnected && (
                         <p className="text-xs text-amber-600">Not connected</p>
@@ -146,24 +162,41 @@ export function ChannelConnectionsSection({ projectId, enabledChannels }: Channe
                     </div>
                   </div>
 
-                  <Button
-                    onClick={() => handleConnect(channelId)}
-                    disabled={connecting === channelId}
-                    variant={isConnected ? 'outline' : 'default'}
-                    size="sm"
-                    className="ml-2 flex-shrink-0 cursor-pointer"
-                  >
-                    {connecting === channelId ? (
-                      <>
-                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        Connecting...
-                      </>
-                    ) : isConnected ? (
-                      'Reconnect'
-                    ) : (
-                      'Connect'
+                  <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                    {isConnected && channelId === 'GOOGLE_ANALYTICS' && (
+                      (() => {
+                        const needsSelection = !connection?.accountId || connection.accountId === 'pending-property-selection'
+                        return (
+                          <Button
+                            onClick={() => setGa4PickerOpen(true)}
+                            size="sm"
+                            variant={needsSelection ? 'default' : 'outline'}
+                            className="cursor-pointer"
+                          >
+                            {needsSelection ? 'Select Property' : 'Change'}
+                          </Button>
+                        )
+                      })()
                     )}
-                  </Button>
+                    <Button
+                      onClick={() => handleConnect(channelId)}
+                      disabled={connecting === channelId}
+                      variant={isConnected ? 'outline' : 'default'}
+                      size="sm"
+                      className="cursor-pointer"
+                    >
+                      {connecting === channelId ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          Connecting...
+                        </>
+                      ) : isConnected ? (
+                        'Reconnect'
+                      ) : (
+                        'Connect'
+                      )}
+                    </Button>
+                  </div>
                 </div>
               )
             })}
@@ -182,6 +215,13 @@ export function ChannelConnectionsSection({ projectId, enabledChannels }: Channe
           </p>
         </div>
       </CardContent>
+
+      <GA4PropertyPicker
+        projectId={projectId}
+        open={ga4PickerOpen}
+        onClose={() => setGa4PickerOpen(false)}
+        onSaved={fetchConnections}
+      />
     </Card>
   )
 }

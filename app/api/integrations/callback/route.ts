@@ -5,7 +5,7 @@
  */
 
 import { db } from '@/lib/db'
-import { exchangeCodeForToken, refreshAccessToken } from '@/lib/integrations/auth'
+import { exchangeCodeForToken } from '@/lib/integrations/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(req: NextRequest) {
@@ -87,6 +87,25 @@ export async function GET(req: NextRequest) {
       ? new Date(Date.now() + tokens.expires_in * 1000)
       : null
 
+    // Check if credential already exists (reconnect case)
+    const existing = await db.projectCredential.findUnique({
+      where: { projectId_channel: { projectId: state, channel: platform } },
+    })
+
+    // On reconnect, preserve the existing accountId/accountName so the user
+    // doesn't lose their previously selected property/page/etc.
+    const updateAccountId = existing?.accountId && existing.accountId !== 'pending-property-selection'
+      && existing.accountId !== 'pending-site-selection'
+      && existing.accountId !== 'pending-org-selection'
+      && existing.accountId !== 'pending-page-selection'
+      && existing.accountId !== 'pending-channel-selection'
+      ? existing.accountId
+      : accountId
+
+    const updateAccountName = existing?.accountName && existing.accountName !== platform
+      ? existing.accountName
+      : accountName
+
     // Save or update credential
     await db.projectCredential.upsert({
       where: {
@@ -113,8 +132,8 @@ export async function GET(req: NextRequest) {
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token || null,
         expiresAt,
-        accountId,
-        accountName,
+        accountId: updateAccountId,
+        accountName: updateAccountName,
         metadata: JSON.stringify({
           tokenType: tokens.token_type || 'Bearer',
           scope: tokens.scope || '',

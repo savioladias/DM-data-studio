@@ -277,87 +277,62 @@ async function fetchMetricsForChannel(
         return []
       }
 
-      const gaMetrics = await fetchGA4Metrics({
+      const { current, previous } = await fetchGA4Metrics({
         accessToken,
         propertyId: credential.accountId,
         startDate,
         endDate,
       })
 
-      // Transform GA4 data to our format
-      // Get the latest date's data
-      const latestData = gaMetrics.filter(m => {
-        const daysDiff = Math.floor(
-          (new Date().getTime() - m.date.getTime()) / (1000 * 60 * 60 * 24)
-        )
-        return daysDiff <= 1
-      })
-
-      const getLatestValue = (metricKey: string) => {
-        const latest = latestData.find(m => m.metricKey === metricKey)
-        return latest?.value ?? 0
-      }
-
-      const getPreviousValue = (metricKey: string) => {
-        const previous = gaMetrics.filter(m => {
-          const daysDiff = Math.floor(
-            (new Date().getTime() - m.date.getTime()) / (1000 * 60 * 60 * 24)
-          )
-          return daysDiff > 1 && daysDiff <= 2
-        })
-        const match = previous.find(m => m.metricKey === metricKey)
-        return match?.value ?? 0
-      }
-
       return [
         {
           key: 'sessions',
           label: 'Sessions',
-          value: getLatestValue('sessions'),
-          previous: getPreviousValue('sessions'),
+          value: Math.round(current.sessions),
+          previous: Math.round(previous.sessions),
           unit: '',
-          deltaPercent: calculateDelta(getLatestValue('sessions'), getPreviousValue('sessions')),
-          trend: calculateTrend(getLatestValue('sessions'), getPreviousValue('sessions')),
+          deltaPercent: calculateDelta(current.sessions, previous.sessions),
+          trend: calculateTrend(current.sessions, previous.sessions),
           historicalData: undefined,
         },
         {
           key: 'activeUsers',
           label: 'Active Users',
-          value: getLatestValue('activeUsers'),
-          previous: getPreviousValue('activeUsers'),
+          value: Math.round(current.activeUsers),
+          previous: Math.round(previous.activeUsers),
           unit: '',
-          deltaPercent: calculateDelta(getLatestValue('activeUsers'), getPreviousValue('activeUsers')),
-          trend: calculateTrend(getLatestValue('activeUsers'), getPreviousValue('activeUsers')),
+          deltaPercent: calculateDelta(current.activeUsers, previous.activeUsers),
+          trend: calculateTrend(current.activeUsers, previous.activeUsers),
           historicalData: undefined,
         },
         {
           key: 'newUsers',
           label: 'New Users',
-          value: getLatestValue('newUsers'),
-          previous: getPreviousValue('newUsers'),
+          value: Math.round(current.newUsers),
+          previous: Math.round(previous.newUsers),
           unit: '',
-          deltaPercent: calculateDelta(getLatestValue('newUsers'), getPreviousValue('newUsers')),
-          trend: calculateTrend(getLatestValue('newUsers'), getPreviousValue('newUsers')),
+          deltaPercent: calculateDelta(current.newUsers, previous.newUsers),
+          trend: calculateTrend(current.newUsers, previous.newUsers),
           historicalData: undefined,
         },
         {
           key: 'bounceRate',
           label: 'Bounce Rate',
-          value: getLatestValue('bounceRate'),
-          previous: getPreviousValue('bounceRate'),
+          value: parseFloat(current.bounceRate.toFixed(3)),
+          previous: parseFloat(previous.bounceRate.toFixed(3)),
           unit: '%',
-          deltaPercent: calculateDelta(getPreviousValue('bounceRate'), getLatestValue('bounceRate')), // Inverted: lower is better
-          trend: calculateTrend(getPreviousValue('bounceRate'), getLatestValue('bounceRate')), // Inverted
+          deltaPercent: calculateDelta(previous.bounceRate, current.bounceRate), // Inverted: lower is better
+          trend: calculateTrend(previous.bounceRate, current.bounceRate), // Inverted
           historicalData: undefined,
         },
         {
           key: 'screenPageViews',
           label: 'Page Views',
-          value: getLatestValue('screenPageViews'),
-          previous: getPreviousValue('screenPageViews'),
+          value: Math.round(current.screenPageViews),
+          previous: Math.round(previous.screenPageViews),
           unit: '',
-          deltaPercent: calculateDelta(getLatestValue('screenPageViews'), getPreviousValue('screenPageViews')),
-          trend: calculateTrend(getLatestValue('screenPageViews'), getPreviousValue('screenPageViews')),
+          deltaPercent: calculateDelta(current.screenPageViews, previous.screenPageViews),
+          trend: calculateTrend(current.screenPageViews, previous.screenPageViews),
           historicalData: undefined,
         },
       ]
