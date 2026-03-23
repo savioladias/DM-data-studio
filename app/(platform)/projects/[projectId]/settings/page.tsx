@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,15 +16,21 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Settings2, Upload, Loader2, Trash2, AlertTriangle } from 'lucide-react'
+import { Settings2, Upload, Loader2, Trash2, AlertTriangle, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { ProjectAvatar } from '@/components/project-avatar'
-import { ChannelConnectionsSection } from '@/components/settings/channel-connections-section'
-import { ScheduledReportsSection } from '@/components/settings/scheduled-reports-section'
 import { ProjectTeamSection } from '@/components/settings/project-team-section'
 import { INDUSTRIES, CURRENCIES } from '@/lib/constants'
 import { CHANNEL_GROUPS, CHANNEL_CATEGORIES, getChannel } from '@/lib/channels'
 import type { ChannelId, ChannelCategory } from '@/lib/channels'
+import { GA4PropertyPicker } from '@/components/ga4-property-picker'
+
+interface ChannelConnection {
+  channel: ChannelId
+  connected: boolean
+  accountName?: string
+  accountId?: string
+}
 
 interface ProjectData {
   id: string
@@ -66,6 +72,40 @@ export default function ProjectSettingsPage() {
 
   const [selectedChannels, setSelectedChannels] = useState<string[]>([])
   const [logoUrl, setLogoUrl] = useState<string>('')
+  const [connections, setConnections] = useState<Map<ChannelId, ChannelConnection>>(new Map())
+  const [connecting, setConnecting] = useState<ChannelId | null>(null)
+  const [ga4PickerOpen, setGa4PickerOpen] = useState(false)
+  const pickerAutoOpened = useRef(false)
+
+  // Auto-open GA4 picker after OAuth redirect
+  useEffect(() => {
+    if (pickerAutoOpened.current) return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('connected') === 'GOOGLE_ANALYTICS' && params.get('success') === 'true') {
+      pickerAutoOpened.current = true
+      setGa4PickerOpen(true)
+    }
+  }, [])
+
+  const parseConnections = (data: any) => {
+    if (data.credentials) {
+      const map = new Map<ChannelId, ChannelConnection>()
+      for (const cred of data.credentials) {
+        map.set(cred.channel as ChannelId, {
+          channel: cred.channel,
+          connected: !!cred.accessToken,
+          accountName: cred.accountName,
+          accountId: cred.accountId,
+        })
+      }
+      setConnections(map)
+    }
+  }
+
+  const handleConnect = async (channelId: ChannelId) => {
+    setConnecting(channelId)
+    window.location.href = `/api/integrations/authorize?platform=${channelId}&projectId=${projectId}`
+  }
 
   // Load project
   useEffect(() => {
@@ -88,6 +128,7 @@ export default function ProjectSettingsPage() {
         })
         setLogoUrl(data.logoUrl || '')
         setSelectedChannels(data.channels.map((ch: any) => ch.channel))
+        parseConnections(data)
       } catch (error) {
         toast.error('Failed to load project')
       } finally {
@@ -401,23 +442,24 @@ export default function ProjectSettingsPage() {
               <div className="grid grid-cols-1 gap-3">
                 {CHANNEL_GROUPS[category].map(channel => {
                   const isSelected = selectedChannels.includes(channel.id)
+                  const connection = connections.get(channel.id as ChannelId)
+                  const isConnected = connection?.connected ?? false
                   return (
-                    <label
+                    <div
                       key={channel.id}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        toggleChannel(channel.id)
-                      }}
-                      className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                        isSelected ? 'border-primary bg-primary/8' : 'border-border hover:border-primary/40'
+                      className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                        isSelected ? 'border-primary bg-primary/8' : 'border-border'
                       }`}
                     >
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={() => toggleChannel(channel.id)}
-                        className="mt-0.5"
+                        className="mt-0.5 flex-shrink-0 cursor-pointer"
                       />
-                      <div className="flex-1">
+                      <div
+                        className="flex-1 cursor-pointer"
+                        onClick={() => toggleChannel(channel.id)}
+                      >
                         <div className="flex items-center gap-2">
                           <div
                             className="h-4 w-4 rounded-sm flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0"
@@ -426,10 +468,45 @@ export default function ProjectSettingsPage() {
                             {channel.label.charAt(0)}
                           </div>
                           <span className="font-medium text-sm">{channel.label}</span>
+                          {isSelected && isConnected && (
+                            <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{channel.description}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {isSelected && isConnected && connection?.accountName && connection.accountId !== 'pending-property-selection'
+                            ? connection.accountName
+                            : channel.description}
+                        </p>
                       </div>
-                    </label>
+                      {isSelected && (
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {isConnected && channel.id === 'GOOGLE_ANALYTICS' && (() => {
+                            const needsSelection = !connection?.accountId || connection.accountId === 'pending-property-selection'
+                            return (
+                              <Button
+                                onClick={() => setGa4PickerOpen(true)}
+                                size="sm"
+                                variant={needsSelection ? 'default' : 'outline'}
+                                className="cursor-pointer"
+                              >
+                                {needsSelection ? 'Select Property' : 'Change'}
+                              </Button>
+                            )
+                          })()}
+                          <Button
+                            onClick={() => handleConnect(channel.id as ChannelId)}
+                            disabled={connecting === channel.id}
+                            variant={isConnected ? 'outline' : 'default'}
+                            size="sm"
+                            className="cursor-pointer"
+                          >
+                            {connecting === channel.id ? (
+                              <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Connecting...</>
+                            ) : isConnected ? 'Reconnect' : 'Connect'}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   )
                 })}
               </div>
@@ -463,22 +540,21 @@ export default function ProjectSettingsPage() {
           <div className="flex justify-end">
             <Button onClick={handleSaveChannels} disabled={saving}>
               {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                'Save Channels'
-              )}
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+              ) : 'Save Channels'}
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Channel Connections Section */}
-      <ChannelConnectionsSection
+      <GA4PropertyPicker
         projectId={projectId}
-        enabledChannels={selectedChannels as ChannelId[]}
+        open={ga4PickerOpen}
+        onClose={() => setGa4PickerOpen(false)}
+        onSaved={async () => {
+          const res = await fetch(`/api/projects/${projectId}`)
+          if (res.ok) parseConnections(await res.json())
+        }}
       />
 
       {/* Scheduled Reports Section */}
