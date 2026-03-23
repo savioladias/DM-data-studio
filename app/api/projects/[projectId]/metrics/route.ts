@@ -244,8 +244,8 @@ async function fetchMetricsForChannel(
     let accessToken = credential.accessToken
     if (credential.expiresAt && new Date() > new Date(credential.expiresAt)) {
       if (!credential.refreshToken) {
-        // Token expired and no refresh token, fall back to mock
-        return generateMockMetrics(channel)
+        // Token expired and no refresh token, return empty
+        return []
       }
 
       // Refresh the token
@@ -366,7 +366,7 @@ async function fetchMetricsForChannel(
     // Fetch Google Search Console data
     if (channel === 'GOOGLE_SEARCH_CONSOLE') {
       if (!credential.accountId || credential.accountId === 'pending-site-selection') {
-        return generateMockMetrics(channel)
+        return []
       }
 
       const gscData = await fetchGSCMetrics({

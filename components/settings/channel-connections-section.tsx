@@ -62,17 +62,12 @@ export function ChannelConnectionsSection({ projectId, enabledChannels }: Channe
     setConnecting(channelId)
     try {
       const res = await fetch(`/api/integrations/authorize?platform=${channelId}&projectId=${projectId}`)
+      const data = await res.json()
 
-      if (res.status === 302 || res.redirected) {
-        // Redirect happened automatically, get the final URL
-        window.location.href = res.url
+      if (res.ok && data.url) {
+        window.location.href = data.url
       } else {
-        const data = await res.json()
-        if (res.status === 500 || res.status === 400) {
-          toast.error(data.message || `Failed to connect ${getChannel(channelId)?.label}`)
-        } else {
-          toast.error(`Failed to connect ${getChannel(channelId)?.label}`)
-        }
+        toast.error(data.message || data.error || `Failed to connect ${getChannel(channelId)?.label}`)
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error'
@@ -124,8 +119,8 @@ export function ChannelConnectionsSection({ projectId, enabledChannels }: Channe
                 <div
                   key={channelId}
                   className={cn(
-                    'flex items-center justify-between p-3 rounded-lg border',
-                    isConnected ? 'bg-green-50/50 border-green-200' : 'bg-muted/30 border-border'
+                    'flex items-center justify-between p-3 rounded-lg border cursor-pointer',
+                    isConnected ? 'border-green-600/40' : 'bg-muted/30 border-border'
                   )}
                 >
                   <div className="flex items-start gap-3 flex-1">
@@ -153,11 +148,6 @@ export function ChannelConnectionsSection({ projectId, enabledChannels }: Channe
                       {!isConnected && (
                         <p className="text-xs text-amber-600">Not connected</p>
                       )}
-                      {connection?.expiresAt && (
-                        <p className="text-xs text-muted-foreground">
-                          Expires: {new Date(connection.expiresAt).toLocaleDateString()}
-                        </p>
-                      )}
                     </div>
                   </div>
 
@@ -166,7 +156,7 @@ export function ChannelConnectionsSection({ projectId, enabledChannels }: Channe
                     disabled={connecting === channelId}
                     variant={isConnected ? 'outline' : 'default'}
                     size="sm"
-                    className="ml-2 flex-shrink-0"
+                    className="ml-2 flex-shrink-0 cursor-pointer"
                   >
                     {connecting === channelId ? (
                       <>
