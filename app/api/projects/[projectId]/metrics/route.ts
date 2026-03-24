@@ -3,12 +3,12 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import type { ChannelId } from '@/lib/channels'
 import { fetchGA4Metrics } from '@/lib/integrations/google/analytics'
-import { fetchGSCMetrics } from '@/lib/integrations/google/search-console'
+import { fetchGSCMetrics, fetchAllGSCMetrics } from '@/lib/integrations/google/search-console'
 import { fetchLinkedInMetrics } from '@/lib/integrations/linkedin/organic'
 import { fetchFacebookMetrics } from '@/lib/integrations/facebook/organic'
 import { fetchInstagramMetrics } from '@/lib/integrations/instagram/organic'
 import { fetchYouTubeMetrics } from '@/lib/integrations/youtube/analytics'
-import { refreshAccessToken } from '@/lib/integrations/auth'
+import { refreshAccessToken, ensureValidAccessToken } from '@/lib/integrations/auth'
 
 // Returns mock data when no real connector is set up yet.
 // Replace with real connector calls once API integrations are built.
@@ -210,15 +210,25 @@ export async function GET(
 
   // Return metrics only for connected channels (channels with credentials)
   const allMetrics: Record<string, ReturnType<typeof generateMockMetrics>> = {}
+  // credentialStatus: 'connected' | 'no_credentials' | 'auth_error'
+  const credentialStatus: Record<string, string> = {}
+
   for (const ch of project.channels) {
-    // Only include metrics if this channel has credentials (is connected)
-    const hasCredentials = project.credentials.some((c: any) => c.channel === ch.channel && c.accessToken)
-    if (hasCredentials) {
-      allMetrics[ch.channel] = await fetchMetricsForChannel(ch.channel as ChannelId, project, startDate, endDate)
+    const cred = project.credentials.find((c: any) => c.channel === ch.channel && c.accessToken)
+    if (!cred) {
+      credentialStatus[ch.channel] = 'no_credentials'
+      continue
+    }
+    credentialStatus[ch.channel] = 'connected'
+    const result = await fetchMetricsForChannel(ch.channel as ChannelId, project, startDate, endDate)
+    allMetrics[ch.channel] = result
+    // If we got credentials but empty result, mark as auth_error so UI can prompt reconnect
+    if (!result || result.length === 0) {
+      credentialStatus[ch.channel] = 'auth_error'
     }
   }
 
-  return NextResponse.json({ metrics: allMetrics })
+  return NextResponse.json({ metrics: allMetrics, credentialStatus })
 }
 
 /**
@@ -240,34 +250,11 @@ async function fetchMetricsForChannel(
       return []
     }
 
-    // Check if token is expired and refresh if needed
-    let accessToken = credential.accessToken
-    if (credential.expiresAt && new Date() > new Date(credential.expiresAt)) {
-      if (!credential.refreshToken) {
-        // Token expired and no refresh token, return empty
-        return []
-      }
+    // Use valid access token (refreshed if needed)
+    const accessToken = await ensureValidAccessToken(credential)
 
-      // Refresh the token
-      try {
-        const newTokens = await refreshAccessToken(channel, credential.refreshToken)
-        accessToken = newTokens.access_token
-
-        // Update credential in DB
-        await db.projectCredential.update({
-          where: { id: credential.id },
-          data: {
-            accessToken: newTokens.access_token,
-            refreshToken: newTokens.refresh_token || credential.refreshToken,
-            expiresAt: newTokens.expires_in
-              ? new Date(Date.now() + newTokens.expires_in * 1000)
-              : null,
-          },
-        })
-      } catch (refreshError) {
-        console.error(`Failed to refresh token for ${channel}:`, refreshError)
-        return []
-      }
+    if (!accessToken) {
+      return []
     }
 
     // Fetch real data based on channel type
@@ -340,16 +327,11 @@ async function fetchMetricsForChannel(
 
     // Fetch Google Search Console data
     if (channel === 'GOOGLE_SEARCH_CONSOLE') {
-      if (!credential.accountId || credential.accountId === 'pending-site-selection') {
-        return [] // Return empty array instead of mock data
-      }
+      const gscData = credential.accountId && credential.accountId !== 'pending-site-selection'
+        ? await fetchGSCMetrics({ accessToken, siteUrl: credential.accountId, startDate, endDate })
+        : await fetchAllGSCMetrics(accessToken, startDate, endDate)
 
-      const gscData = await fetchGSCMetrics({
-        accessToken,
-        siteUrl: credential.accountId,
-        startDate,
-        endDate,
-      })
+      if (!gscData) return []
 
       return [
         {
@@ -618,8 +600,8 @@ async function fetchMetricsForChannel(
     // For other channels, return empty (no integrations built yet)
     return []
   } catch (error) {
-    console.error(`Error fetching metrics for ${channel}:`, error)
-    // Return empty on error (no mock data)
+    const msg = error instanceof Error ? error.message : String(error)
+    console.error(`Error fetching metrics for ${channel}: ${msg}`)
     return []
   }
 }

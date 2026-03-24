@@ -28,6 +28,7 @@ export function GA4PropertyPicker({ projectId, open, onClose, onSaved }: {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     if (open) {
@@ -106,8 +107,19 @@ export function GA4PropertyPicker({ projectId, open, onClose, onSaved }: {
               No GA4 properties found for this account.
             </p>
           ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {properties.map(prop => (
+            <div className="space-y-3">
+              <input
+                type="text"
+                placeholder="Search properties..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm"
+              />
+              <div className="space-y-2 max-h-56 overflow-y-auto">
+              {properties.filter(p =>
+                p.displayName.toLowerCase().includes(search.toLowerCase()) ||
+                p.propertyId.includes(search)
+              ).map(prop => (
                 <button
                   key={prop.propertyId}
                   onClick={() => setSelectedId(prop.propertyId)}
@@ -127,6 +139,7 @@ export function GA4PropertyPicker({ projectId, open, onClose, onSaved }: {
                   )}
                 </button>
               ))}
+              </div>
             </div>
           )}
 

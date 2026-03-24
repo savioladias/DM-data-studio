@@ -18,11 +18,32 @@ export interface GSCMetricData {
 }
 
 /**
- * Fetch search metrics from Google Search Console
- * Returns aggregated clicks, impressions, CTR, and average position
+ * List all sites available in a GSC account
  */
-export async function fetchGSCMetrics(config: GSCFetchConfig): Promise<GSCMetricData> {
-  // Encode the site URL (format: sc-domain:example.com or https://example.com/)
+async function listGSCSites(accessToken: string): Promise<string[]> {
+  const res = await fetch('https://www.googleapis.com/webmasters/v3/sites', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    console.error('[GSC] Failed to list sites:', res.status, err)
+    return []
+  }
+
+  const data = await res.json() as {
+    siteEntry?: { siteUrl: string; permissionLevel: string }[]
+  }
+
+  const sites = (data.siteEntry ?? []).map(s => s.siteUrl)
+  console.log('[GSC] Sites found in account:', sites)
+  return sites
+}
+
+/**
+ * Fetch search metrics from Google Search Console for a single site
+ */
+export async function fetchGSCMetrics(config: GSCFetchConfig): Promise<GSCMetricData | null> {
   const encodedSiteUrl = encodeURIComponent(config.siteUrl)
 
   const response = await fetch(
@@ -37,7 +58,7 @@ export async function fetchGSCMetrics(config: GSCFetchConfig): Promise<GSCMetric
         startDate: config.startDate,
         endDate: config.endDate,
         dimensions: [],
-        dataState: 'final',
+        dataState: 'all',
       }),
     }
   )
@@ -56,17 +77,10 @@ export async function fetchGSCMetrics(config: GSCFetchConfig): Promise<GSCMetric
     }>
   }
 
-  // If no rows, return zeros
   if (!data.rows || data.rows.length === 0) {
-    return {
-      clicks: 0,
-      impressions: 0,
-      ctr: 0,
-      position: 0,
-    }
+    return null
   }
 
-  // Sum up the metrics from all rows
   const aggregated = data.rows.reduce(
     (acc, row) => ({
       clicks: acc.clicks + (row.clicks || 0),
@@ -77,13 +91,72 @@ export async function fetchGSCMetrics(config: GSCFetchConfig): Promise<GSCMetric
     { clicks: 0, impressions: 0, ctr: 0, position: 0 }
   )
 
-  // Average the position across rows
-  const avgPosition = data.rows.length > 0 ? aggregated.position / data.rows.length : 0
+  const avgPosition = aggregated.position / data.rows.length
 
   return {
     clicks: aggregated.clicks,
     impressions: aggregated.impressions,
-    ctr: aggregated.ctr * 100, // Convert to percentage
+    ctr: aggregated.ctr * 100,
+    position: parseFloat(avgPosition.toFixed(2)),
+  }
+}
+
+/**
+ * Fetch and aggregate search metrics across ALL sites in the account.
+ * Returns null if no sites found or no data across any site.
+ */
+export async function fetchAllGSCMetrics(
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<GSCMetricData | null> {
+  const siteUrls = await listGSCSites(accessToken)
+
+  if (siteUrls.length === 0) {
+    console.warn('[GSC] No sites found in account — token may be invalid or account has no properties')
+    return null
+  }
+
+  const results = await Promise.allSettled(
+    siteUrls.map(siteUrl =>
+      fetchGSCMetrics({ accessToken, siteUrl, startDate, endDate })
+    )
+  )
+
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      console.log(`[GSC] ${siteUrls[i]}: clicks=${r.value?.clicks} impressions=${r.value?.impressions}`)
+    } else {
+      console.error(`[GSC] ${siteUrls[i]}: error`, r.reason)
+    }
+  })
+
+  const fulfilled = results
+    .filter((r): r is PromiseFulfilledResult<GSCMetricData> => r.status === 'fulfilled' && r.value !== null)
+    .map(r => r.value as GSCMetricData)
+
+  if (fulfilled.length === 0) {
+    return null
+  }
+
+  const totalClicks = fulfilled.reduce((sum, d) => sum + d.clicks, 0)
+  const totalImpressions = fulfilled.reduce((sum, d) => sum + d.impressions, 0)
+
+  // If all sites returned zero data, return null so the channel doesn't render as fake zeros
+  if (totalClicks === 0 && totalImpressions === 0) {
+    console.warn('[GSC] All sites returned 0 clicks and 0 impressions for this date range')
+    return null
+  }
+
+  const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
+  const avgPosition =
+    fulfilled.filter(d => d.position > 0).reduce((sum, d) => sum + d.position, 0) /
+    (fulfilled.filter(d => d.position > 0).length || 1)
+
+  return {
+    clicks: totalClicks,
+    impressions: totalImpressions,
+    ctr: parseFloat(avgCtr.toFixed(2)),
     position: parseFloat(avgPosition.toFixed(2)),
   }
 }

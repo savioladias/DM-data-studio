@@ -47,6 +47,7 @@ interface ProjectDashboardProps {
 export function ProjectDashboard({ project, enabledChannels, recentInsights }: ProjectDashboardProps) {
   const router = useRouter()
   const [metrics, setMetrics] = useState<Record<string, Metric[]>>({})
+  const [credentialStatus, setCredentialStatus] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [lastRefresh, setLastRefresh] = useState(new Date())
   const [dateRange, setDateRange] = useState<DateRange>({
@@ -66,6 +67,7 @@ export function ProjectDashboard({ project, enabledChannels, recentInsights }: P
       const res = await fetch(`/api/projects/${project.id}/metrics?${params}`)
       const data = await res.json()
       setMetrics(data.metrics ?? {})
+      setCredentialStatus(data.credentialStatus ?? {})
       setLastRefresh(new Date())
 
       // Detect anomalies from the fetched metrics
@@ -133,8 +135,13 @@ export function ProjectDashboard({ project, enabledChannels, recentInsights }: P
                         {channel.label.charAt(0)}
                       </div>
                       <span>{channel.label}</span>
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {hasData ? '✓ Connected' : '○ No data'}
+                      <span className="text-xs ml-auto">
+                        {hasData
+                          ? <span className="text-emerald-600">✓ Connected</span>
+                          : credentialStatus[channelId] === 'auth_error'
+                            ? <span className="text-amber-600">⚠ Reconnect</span>
+                            : <span className="text-muted-foreground">○ Not connected</span>
+                        }
                       </span>
                     </DropdownMenuItem>
                   )
@@ -161,6 +168,31 @@ export function ProjectDashboard({ project, enabledChannels, recentInsights }: P
         </div>
       </div>
 
+
+      {/* Auth error banner — channels with credentials that returned no data */}
+      {!loading && (() => {
+        const authErrors = enabledChannels.filter(c => credentialStatus[c] === 'auth_error')
+        if (authErrors.length === 0) return null
+        return (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 flex items-start gap-3">
+            <span className="text-amber-600 text-lg leading-none mt-0.5">⚠</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                {authErrors.length === 1 ? '1 channel needs reconnecting' : `${authErrors.length} channels need reconnecting`}
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                {authErrors.map(c => getChannel(c)?.label ?? c).join(', ')} — token expired. Go to{' '}
+                <button
+                  onClick={() => router.push(`/projects/${project.id}/settings`)}
+                  className="underline font-medium cursor-pointer"
+                >
+                  Settings → Reconnect
+                </button>
+              </p>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Loading */}
       {loading ? (

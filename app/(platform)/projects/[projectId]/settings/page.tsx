@@ -24,6 +24,7 @@ import { INDUSTRIES, CURRENCIES } from '@/lib/constants'
 import { CHANNEL_GROUPS, CHANNEL_CATEGORIES, getChannel } from '@/lib/channels'
 import type { ChannelId, ChannelCategory } from '@/lib/channels'
 import { GA4PropertyPicker } from '@/components/ga4-property-picker'
+import { GSCSitePicker } from '@/components/gsc-site-picker'
 
 interface ChannelConnection {
   channel: ChannelId
@@ -75,15 +76,18 @@ export default function ProjectSettingsPage() {
   const [connections, setConnections] = useState<Map<ChannelId, ChannelConnection>>(new Map())
   const [connecting, setConnecting] = useState<ChannelId | null>(null)
   const [ga4PickerOpen, setGa4PickerOpen] = useState(false)
+  const [gscPickerOpen, setGscPickerOpen] = useState(false)
   const pickerAutoOpened = useRef(false)
 
-  // Auto-open GA4 picker after OAuth redirect
+  // Auto-open pickers after OAuth redirect
   useEffect(() => {
     if (pickerAutoOpened.current) return
     const params = new URLSearchParams(window.location.search)
-    if (params.get('connected') === 'GOOGLE_ANALYTICS' && params.get('success') === 'true') {
+    const connected = params.get('connected')
+    if (params.get('success') === 'true') {
       pickerAutoOpened.current = true
-      setGa4PickerOpen(true)
+      if (connected === 'GOOGLE_ANALYTICS') setGa4PickerOpen(true)
+      if (connected === 'GOOGLE_SEARCH_CONSOLE') setGscPickerOpen(true)
     }
   }, [])
 
@@ -493,6 +497,19 @@ export default function ProjectSettingsPage() {
                               </Button>
                             )
                           })()}
+                          {isConnected && channel.id === 'GOOGLE_SEARCH_CONSOLE' && (() => {
+                            const needsSelection = !connection?.accountId || connection.accountId === 'pending-site-selection'
+                            return (
+                              <Button
+                                onClick={() => setGscPickerOpen(true)}
+                                size="sm"
+                                variant={needsSelection ? 'default' : 'outline'}
+                                className="cursor-pointer"
+                              >
+                                {needsSelection ? 'Select Site' : 'Change'}
+                              </Button>
+                            )
+                          })()}
                           <Button
                             onClick={() => handleConnect(channel.id as ChannelId)}
                             disabled={connecting === channel.id}
@@ -552,6 +569,16 @@ export default function ProjectSettingsPage() {
         open={ga4PickerOpen}
         onClose={() => setGa4PickerOpen(false)}
         onSaved={async () => {
+          const res = await fetch(`/api/projects/${projectId}`)
+          if (res.ok) parseConnections(await res.json())
+        }}
+      />
+
+      <GSCSitePicker
+        projectId={projectId}
+        open={gscPickerOpen}
+        onClose={async () => {
+          setGscPickerOpen(false)
           const res = await fetch(`/api/projects/${projectId}`)
           if (res.ok) parseConnections(await res.json())
         }}
