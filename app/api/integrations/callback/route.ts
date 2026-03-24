@@ -80,6 +80,9 @@ export async function GET(req: NextRequest) {
     } else if (platform === 'YOUTUBE') {
       accountName = 'YouTube Channel'
       accountId = 'pending-channel-selection'
+    } else if (platform === 'GOOGLE_ADS') {
+      accountName = 'Google Ads Account'
+      accountId = 'pending-account-selection'
     }
 
     // Calculate token expiration
@@ -99,6 +102,7 @@ export async function GET(req: NextRequest) {
       && existing.accountId !== 'pending-org-selection'
       && existing.accountId !== 'pending-page-selection'
       && existing.accountId !== 'pending-channel-selection'
+      && existing.accountId !== 'pending-account-selection'
       ? existing.accountId
       : accountId
 

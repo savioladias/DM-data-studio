@@ -25,6 +25,7 @@ import { CHANNEL_GROUPS, CHANNEL_CATEGORIES, getChannel } from '@/lib/channels'
 import type { ChannelId, ChannelCategory } from '@/lib/channels'
 import { GA4PropertyPicker } from '@/components/ga4-property-picker'
 import { GSCSitePicker } from '@/components/gsc-site-picker'
+import { GoogleAdsPicker } from '@/components/google-ads-picker'
 
 interface ChannelConnection {
   channel: ChannelId
@@ -76,6 +77,7 @@ export default function ProjectSettingsPage() {
   const [connections, setConnections] = useState<Map<ChannelId, ChannelConnection>>(new Map())
   const [connecting, setConnecting] = useState<ChannelId | null>(null)
   const [ga4PickerOpen, setGa4PickerOpen] = useState(false)
+  const [googleAdsPickerOpen, setGoogleAdsPickerOpen] = useState(false)
   const [gscPickerOpen, setGscPickerOpen] = useState(false)
   const pickerAutoOpened = useRef(false)
 
@@ -87,6 +89,7 @@ export default function ProjectSettingsPage() {
     if (params.get('success') === 'true') {
       pickerAutoOpened.current = true
       if (connected === 'GOOGLE_ANALYTICS') setGa4PickerOpen(true)
+      if (connected === 'GOOGLE_ADS') setGoogleAdsPickerOpen(true)
       if (connected === 'GOOGLE_SEARCH_CONSOLE') setGscPickerOpen(true)
     }
   }, [])
@@ -497,6 +500,19 @@ export default function ProjectSettingsPage() {
                               </Button>
                             )
                           })()}
+                          {isConnected && channel.id === 'GOOGLE_ADS' && (() => {
+                            const needsSelection = !connection?.accountId || connection.accountId === 'pending-account-selection'
+                            return (
+                              <Button
+                                onClick={() => setGoogleAdsPickerOpen(true)}
+                                size="sm"
+                                variant={needsSelection ? 'default' : 'outline'}
+                                className="cursor-pointer"
+                              >
+                                {needsSelection ? 'Select Account' : 'Change'}
+                              </Button>
+                            )
+                          })()}
                           {isConnected && channel.id === 'GOOGLE_SEARCH_CONSOLE' && (() => {
                             const needsSelection = !connection?.accountId || connection.accountId === 'pending-site-selection'
                             return (
@@ -568,6 +584,16 @@ export default function ProjectSettingsPage() {
         projectId={projectId}
         open={ga4PickerOpen}
         onClose={() => setGa4PickerOpen(false)}
+        onSaved={async () => {
+          const res = await fetch(`/api/projects/${projectId}`)
+          if (res.ok) parseConnections(await res.json())
+        }}
+      />
+
+      <GoogleAdsPicker
+        projectId={projectId}
+        open={googleAdsPickerOpen}
+        onClose={() => setGoogleAdsPickerOpen(false)}
         onSaved={async () => {
           const res = await fetch(`/api/projects/${projectId}`)
           if (res.ok) parseConnections(await res.json())

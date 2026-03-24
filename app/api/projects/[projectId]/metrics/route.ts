@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import type { ChannelId } from '@/lib/channels'
 import { fetchGA4Metrics } from '@/lib/integrations/google/analytics'
 import { fetchGSCMetrics, fetchAllGSCMetrics } from '@/lib/integrations/google/search-console'
+import { fetchGoogleAdsMetrics } from '@/lib/integrations/google/ads'
 import { fetchLinkedInMetrics } from '@/lib/integrations/linkedin/organic'
 import { fetchFacebookMetrics } from '@/lib/integrations/facebook/organic'
 import { fetchInstagramMetrics } from '@/lib/integrations/instagram/organic'
@@ -595,6 +596,101 @@ async function fetchMetricsForChannel(
           trend: calculateTrend(parseFloat(youtubeData.engagementRate.toFixed(2)), parseFloat((youtubeData.engagementRate * 0.9).toFixed(2))),
         },
       ]
+    }
+
+    // Fetch Google Ads data
+    if (channel === 'GOOGLE_ADS') {
+      if (!credential.accountId || credential.accountId === 'pending-account-selection') {
+        return []
+      }
+
+      // Calculate previous period (same duration, shifted back)
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      const durationDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+      const prevEnd = new Date(start)
+      prevEnd.setDate(prevEnd.getDate() - 1)
+      const prevStart = new Date(prevEnd)
+      prevStart.setDate(prevStart.getDate() - durationDays)
+
+      const [current, previous] = await Promise.all([
+        fetchGoogleAdsMetrics({ accessToken, customerId: credential.accountId, startDate, endDate }),
+        fetchGoogleAdsMetrics({
+          accessToken,
+          customerId: credential.accountId,
+          startDate: prevStart.toISOString().split('T')[0],
+          endDate: prevEnd.toISOString().split('T')[0],
+        }),
+      ])
+
+      const metrics: any[] = [
+        {
+          key: 'impressions',
+          label: 'Impressions',
+          value: current.impressions,
+          previous: previous.impressions,
+          unit: '',
+          deltaPercent: calculateDelta(current.impressions, previous.impressions),
+          trend: calculateTrend(current.impressions, previous.impressions),
+        },
+        {
+          key: 'clicks',
+          label: 'Clicks',
+          value: current.clicks,
+          previous: previous.clicks,
+          unit: '',
+          deltaPercent: calculateDelta(current.clicks, previous.clicks),
+          trend: calculateTrend(current.clicks, previous.clicks),
+        },
+        {
+          key: 'spend',
+          label: 'Total Spend',
+          value: parseFloat(current.spend.toFixed(2)),
+          previous: parseFloat(previous.spend.toFixed(2)),
+          unit: '£',
+          deltaPercent: calculateDelta(current.spend, previous.spend),
+          trend: calculateTrend(current.spend, previous.spend),
+        },
+        {
+          key: 'conversions',
+          label: 'Conversions',
+          value: parseFloat(current.conversions.toFixed(1)),
+          previous: parseFloat(previous.conversions.toFixed(1)),
+          unit: '',
+          deltaPercent: calculateDelta(current.conversions, previous.conversions),
+          trend: calculateTrend(current.conversions, previous.conversions),
+        },
+      ]
+
+      if (current.impressions > 0) {
+        const ctr = (current.clicks / current.impressions) * 100
+        const prevCtr = previous.impressions > 0 ? (previous.clicks / previous.impressions) * 100 : 0
+        metrics.push({
+          key: 'ctr',
+          label: 'CTR',
+          value: parseFloat(ctr.toFixed(2)),
+          previous: parseFloat(prevCtr.toFixed(2)),
+          unit: '%',
+          deltaPercent: calculateDelta(ctr, prevCtr),
+          trend: calculateTrend(ctr, prevCtr),
+        })
+      }
+
+      if (current.conversions > 0) {
+        const cpa = current.spend / current.conversions
+        const prevCpa = previous.conversions > 0 ? previous.spend / previous.conversions : 0
+        metrics.push({
+          key: 'costPerConversion',
+          label: 'Cost / Conv.',
+          value: parseFloat(cpa.toFixed(2)),
+          previous: parseFloat(prevCpa.toFixed(2)),
+          unit: '£',
+          deltaPercent: calculateDelta(prevCpa, cpa), // inverted: lower is better
+          trend: calculateTrend(prevCpa, cpa),
+        })
+      }
+
+      return metrics
     }
 
     // For other channels, return empty (no integrations built yet)
