@@ -21,39 +21,60 @@ export interface GA4AggregatedMetrics {
 export async function fetchGA4Properties(
   accessToken: string
 ): Promise<Array<{ propertyId: string; displayName: string }>> {
-  const response = await fetch(
-    'https://analyticsadmin.googleapis.com/v1beta/accountSummaries',
-    {
-      headers: { 'Authorization': `Bearer ${accessToken}` },
-    }
-  )
-
-  if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`GA4 Admin API error: ${error}`)
-  }
-
-  const data = (await response.json()) as {
-    accountSummaries?: Array<{
-      account: string
-      displayName: string
-      propertySummaries?: Array<{ property: string; displayName: string }>
-    }>
-  }
-
   const properties: Array<{ propertyId: string; displayName: string }> = []
-  for (const account of data.accountSummaries || []) {
-    for (const prop of account.propertySummaries || []) {
-      properties.push({
-        propertyId: prop.property.replace('properties/', ''),
-        displayName: prop.displayName || prop.property,
-      })
+  let pageToken: string | undefined = undefined
+
+  do {
+    const url = new URL('https://analyticsadmin.googleapis.com/v1beta/accountSummaries')
+    if (pageToken) {
+      url.searchParams.append('pageToken', pageToken)
     }
-  }
+    // Max page size for accountSummaries is 200
+    url.searchParams.append('pageSize', '200')
+
+    const response = await fetch(url.toString(), {
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`GA4 Admin API error: ${error}`)
+    }
+
+    const data = (await response.json()) as {
+      accountSummaries?: Array<{
+        account: string
+        displayName: string
+        propertySummaries?: Array<{ property: string; displayName: string }>
+      }>
+      nextPageToken?: string
+    }
+
+    for (const account of data.accountSummaries || []) {
+      for (const prop of account.propertySummaries || []) {
+        properties.push({
+          propertyId: prop.property.replace('properties/', ''),
+          displayName: prop.displayName || prop.property,
+        })
+      }
+    }
+
+    pageToken = data.nextPageToken
+  } while (pageToken)
+
   return properties
 }
 
-const METRIC_NAMES = ['activeUsers', 'newUsers', 'sessions', 'bounceRate', 'screenPageViews']
+const METRIC_NAMES = [
+  'activeUsers',
+  'newUsers',
+  'sessions',
+  'bounceRate',
+  'screenPageViews',
+  'engagementRate',
+  'engagedSessions',
+  'conversions'
+]
 
 /** Run a single aggregate GA4 report (no dimensions = one row total) */
 async function runAggregateReport(

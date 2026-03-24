@@ -102,6 +102,41 @@ export async function fetchGSCMetrics(config: GSCFetchConfig): Promise<GSCMetric
 }
 
 /**
+ * Catch potential rate limit issues by fetching in small batches
+ */
+async function fetchMetricsWithConcurrency(
+  accessToken: string,
+  siteUrls: string[],
+  startDate: string,
+  endDate: string,
+  concurrency: number = 5
+): Promise<GSCMetricData[]> {
+  const results: GSCMetricData[] = []
+  
+  for (let i = 0; i < siteUrls.length; i += concurrency) {
+    const batch = siteUrls.slice(i, i + concurrency)
+    const batchResults = await Promise.allSettled(
+      batch.map(siteUrl => fetchGSCMetrics({ accessToken, siteUrl, startDate, endDate }))
+    )
+    
+    batchResults.forEach((r, idx) => {
+      if (r.status === 'fulfilled' && r.value) {
+        results.push(r.value)
+      } else if (r.status === 'rejected') {
+        console.error(`[GSC] Error fetching metrics for ${batch[idx]}:`, r.reason)
+      }
+    })
+    
+    // Small delay between batches if there are many
+    if (siteUrls.length > concurrency && i + concurrency < siteUrls.length) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+  }
+  
+  return results
+}
+
+/**
  * Fetch and aggregate search metrics across ALL sites in the account.
  * Returns null if no sites found or no data across any site.
  */
@@ -117,23 +152,8 @@ export async function fetchAllGSCMetrics(
     return null
   }
 
-  const results = await Promise.allSettled(
-    siteUrls.map(siteUrl =>
-      fetchGSCMetrics({ accessToken, siteUrl, startDate, endDate })
-    )
-  )
-
-  results.forEach((r, i) => {
-    if (r.status === 'fulfilled') {
-      console.log(`[GSC] ${siteUrls[i]}: clicks=${r.value?.clicks} impressions=${r.value?.impressions}`)
-    } else {
-      console.error(`[GSC] ${siteUrls[i]}: error`, r.reason)
-    }
-  })
-
-  const fulfilled = results
-    .filter((r): r is PromiseFulfilledResult<GSCMetricData> => r.status === 'fulfilled' && r.value !== null)
-    .map(r => r.value as GSCMetricData)
+  console.log(`[GSC] Aggregating data for ${siteUrls.length} sites...`)
+  const fulfilled = await fetchMetricsWithConcurrency(accessToken, siteUrls, startDate, endDate)
 
   if (fulfilled.length === 0) {
     return null
@@ -148,10 +168,11 @@ export async function fetchAllGSCMetrics(
     return null
   }
 
+  const totalPosition = fulfilled.filter(d => d.position > 0).reduce((sum, d) => sum + d.position, 0)
+  const positionCount = fulfilled.filter(d => d.position > 0).length || 1
+  const avgPosition = totalPosition / positionCount
+
   const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
-  const avgPosition =
-    fulfilled.filter(d => d.position > 0).reduce((sum, d) => sum + d.position, 0) /
-    (fulfilled.filter(d => d.position > 0).length || 1)
 
   return {
     clicks: totalClicks,

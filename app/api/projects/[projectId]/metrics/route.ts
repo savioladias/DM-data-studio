@@ -306,8 +306,8 @@ async function fetchMetricsForChannel(
         {
           key: 'bounceRate',
           label: 'Bounce Rate',
-          value: parseFloat(current.bounceRate.toFixed(3)),
-          previous: parseFloat(previous.bounceRate.toFixed(3)),
+          value: parseFloat((current.bounceRate * 100).toFixed(1)),
+          previous: parseFloat((previous.bounceRate * 100).toFixed(1)),
           unit: '%',
           deltaPercent: calculateDelta(previous.bounceRate, current.bounceRate), // Inverted: lower is better
           trend: calculateTrend(previous.bounceRate, current.bounceRate), // Inverted
@@ -323,53 +323,100 @@ async function fetchMetricsForChannel(
           trend: calculateTrend(current.screenPageViews, previous.screenPageViews),
           historicalData: undefined,
         },
+        {
+          key: 'engagementRate',
+          label: 'Engagement Rate',
+          value: parseFloat((current.engagementRate * 100).toFixed(1)),
+          previous: parseFloat((previous.engagementRate * 100).toFixed(1)),
+          unit: '%',
+          deltaPercent: calculateDelta(current.engagementRate, previous.engagementRate),
+          trend: calculateTrend(current.engagementRate, previous.engagementRate),
+          historicalData: undefined,
+        },
+        {
+          key: 'engagedSessions',
+          label: 'Engaged Sessions',
+          value: Math.round(current.engagedSessions),
+          previous: Math.round(previous.engagedSessions),
+          unit: '',
+          deltaPercent: calculateDelta(current.engagedSessions, previous.engagedSessions),
+          trend: calculateTrend(current.engagedSessions, previous.engagedSessions),
+          historicalData: undefined,
+        },
+        {
+          key: 'conversions',
+          label: 'Key Events / Conversions',
+          value: Math.round(current.conversions),
+          previous: Math.round(previous.conversions),
+          unit: '',
+          deltaPercent: calculateDelta(current.conversions, previous.conversions),
+          trend: calculateTrend(current.conversions, previous.conversions),
+          historicalData: undefined,
+        },
       ]
     }
 
-    // Fetch Google Search Console data
+    // Fetch Google Search Console data (real data for both current and prior period)
     if (channel === 'GOOGLE_SEARCH_CONSOLE') {
-      const gscData = credential.accountId && credential.accountId !== 'pending-site-selection'
-        ? await fetchGSCMetrics({ accessToken, siteUrl: credential.accountId, startDate, endDate })
-        : await fetchAllGSCMetrics(accessToken, startDate, endDate)
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      const durationDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+      const prevEnd = new Date(start)
+      prevEnd.setDate(prevEnd.getDate() - 1)
+      const prevStart = new Date(prevEnd)
+      prevStart.setDate(prevStart.getDate() - durationDays)
+      
+      const prevStartStr = prevStart.toISOString().split('T')[0]
+      const prevEndStr = prevEnd.toISOString().split('T')[0]
 
-      if (!gscData) return []
+      const [current, previous] = await Promise.all([
+        credential.accountId && credential.accountId !== 'pending-site-selection'
+          ? fetchGSCMetrics({ accessToken, siteUrl: credential.accountId, startDate, endDate })
+          : fetchAllGSCMetrics(accessToken, startDate, endDate),
+        credential.accountId && credential.accountId !== 'pending-site-selection'
+          ? fetchGSCMetrics({ accessToken, siteUrl: credential.accountId, startDate: prevStartStr, endDate: prevEndStr })
+          : fetchAllGSCMetrics(accessToken, prevStartStr, prevEndStr)
+      ])
+
+      if (!current) return []
+      const prev = previous || { clicks: 0, impressions: 0, ctr: 0, position: 0 }
 
       return [
         {
           key: 'clicks',
           label: 'Clicks',
-          value: gscData.clicks,
-          previous: Math.round(gscData.clicks * 0.9), // Estimate previous for demo
+          value: current.clicks,
+          previous: prev.clicks,
           unit: '',
-          deltaPercent: calculateDelta(gscData.clicks, Math.round(gscData.clicks * 0.9)),
-          trend: calculateTrend(gscData.clicks, Math.round(gscData.clicks * 0.9)),
+          deltaPercent: calculateDelta(current.clicks, prev.clicks),
+          trend: calculateTrend(current.clicks, prev.clicks),
         },
         {
           key: 'impressions',
           label: 'Impressions',
-          value: gscData.impressions,
-          previous: Math.round(gscData.impressions * 0.95),
+          value: current.impressions,
+          previous: prev.impressions,
           unit: '',
-          deltaPercent: calculateDelta(gscData.impressions, Math.round(gscData.impressions * 0.95)),
-          trend: calculateTrend(gscData.impressions, Math.round(gscData.impressions * 0.95)),
+          deltaPercent: calculateDelta(current.impressions, prev.impressions),
+          trend: calculateTrend(current.impressions, prev.impressions),
         },
         {
           key: 'ctr',
           label: 'CTR',
-          value: parseFloat(gscData.ctr.toFixed(2)),
-          previous: parseFloat((gscData.ctr * 0.95).toFixed(2)),
+          value: parseFloat(current.ctr.toFixed(2)),
+          previous: parseFloat(prev.ctr.toFixed(2)),
           unit: '%',
-          deltaPercent: calculateDelta(parseFloat((gscData.ctr * 1.05).toFixed(2)), parseFloat(gscData.ctr.toFixed(2))), // Inverted for CTR
-          trend: calculateTrend(parseFloat((gscData.ctr * 1.05).toFixed(2)), parseFloat(gscData.ctr.toFixed(2))),
+          deltaPercent: calculateDelta(current.ctr, prev.ctr),
+          trend: calculateTrend(current.ctr, prev.ctr),
         },
         {
           key: 'avgPosition',
           label: 'Avg Position',
-          value: parseFloat(gscData.position.toFixed(1)),
-          previous: parseFloat((gscData.position * 1.05).toFixed(1)),
+          value: parseFloat(current.position.toFixed(1)),
+          previous: parseFloat(prev.position.toFixed(1)),
           unit: '',
-          deltaPercent: calculateDelta(parseFloat((gscData.position * 1.05).toFixed(1)), parseFloat(gscData.position.toFixed(1))), // Inverted for position (lower is better)
-          trend: calculateTrend(parseFloat((gscData.position * 1.05).toFixed(1)), parseFloat(gscData.position.toFixed(1))),
+          deltaPercent: calculateDelta(prev.position, current.position), // Inverted: lower is better
+          trend: calculateTrend(prev.position, current.position),
         },
       ]
     }
