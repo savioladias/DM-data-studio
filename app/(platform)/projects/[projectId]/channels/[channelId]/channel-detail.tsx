@@ -6,13 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Sparkles, Loader2, Eye } from 'lucide-react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Sparkles, Loader2, Eye, ExternalLink, Info } from 'lucide-react'
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
 import { ForecastChart } from '@/components/dashboard/forecast-chart'
 import { generateForecast } from '@/lib/forecast'
 import { getChannel } from '@/lib/channels'
 import type { ChannelId } from '@/lib/channels'
-import type { Metric } from '@/lib/types'
+import type { Metric, MetricTableColumn } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 interface ChannelDetailProps {
@@ -49,6 +49,169 @@ function generateMetricHistory(currentValue: number, trend?: string, label?: str
 
   return data
 }
+
+// ── Helper sub-components ──────────────────────────────────────────────────
+
+function CWVBadge({ category }: { category?: 'FAST' | 'AVERAGE' | 'SLOW' }) {
+  if (!category) return <Badge variant="outline" className="text-xs">No data</Badge>
+  const map = {
+    FAST: { label: 'Good', className: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30' },
+    AVERAGE: { label: 'Needs Improvement', className: 'bg-amber-500/15 text-amber-600 border-amber-500/30' },
+    SLOW: { label: 'Poor', className: 'bg-red-500/15 text-red-600 border-red-500/30' },
+  }
+  const { label, className } = map[category]
+  return <Badge variant="outline" className={cn('text-xs', className)}>{label}</Badge>
+}
+
+function MetricCWVCard({ metric }: { metric: Metric }) {
+  const cwv = metric.cwvData
+  const vitals = [
+    { key: 'lcp', label: 'LCP', desc: 'Largest Contentful Paint', data: cwv?.lcp },
+    { key: 'inp', label: 'INP', desc: 'Interaction to Next Paint', data: cwv?.inp },
+    { key: 'cls', label: 'CLS', desc: 'Cumulative Layout Shift', data: cwv?.cls },
+    { key: 'fcp', label: 'FCP', desc: 'First Contentful Paint', data: cwv?.fcp },
+    { key: 'ttfb', label: 'TTFB', desc: 'Time to First Byte', data: cwv?.ttfb },
+  ]
+  const hasData = vitals.some(v => v.data)
+
+  return (
+    <Card className="col-span-full lg:col-span-1">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">{metric.label}</CardTitle>
+          {cwv?.overallCategory
+            ? <CWVBadge category={cwv.overallCategory} />
+            : hasData ? null : <Badge variant="outline" className="text-xs text-muted-foreground">No data</Badge>
+          }
+        </div>
+      </CardHeader>
+      <CardContent>
+        {!hasData ? (
+          <p className="text-sm text-muted-foreground">
+            No field data available. This site may not have enough traffic in the Chrome UX Report yet.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {vitals.map(v => v.data && (
+              <div key={v.key} className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-medium">{v.label}</span>
+                  <span className="text-xs text-muted-foreground ml-2">{v.desc}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-mono">{v.data.displayValue}</span>
+                  <CWVBadge category={v.data.category} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function MetricTableCard({ metric }: { metric: Metric }) {
+  const columns = metric.tableColumns ?? []
+  const rows = metric.tableData ?? []
+
+  return (
+    <Card className="col-span-full">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">{metric.label}</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground px-6 pb-4">No data available for this period.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  {columns.map(col => (
+                    <th
+                      key={col.key}
+                      className={cn(
+                        'px-4 py-2 text-xs font-medium text-muted-foreground',
+                        col.type === 'text' || col.type === 'url' ? 'text-left' : 'text-right'
+                      )}
+                    >
+                      {col.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, i) => (
+                  <tr key={i} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                    {columns.map(col => {
+                      const val = row[col.key]
+                      const isUrl = col.type === 'url' && typeof val === 'string'
+                      return (
+                        <td
+                          key={col.key}
+                          className={cn(
+                            'px-4 py-2',
+                            col.type === 'text' || col.type === 'url' ? 'text-left' : 'text-right tabular-nums'
+                          )}
+                        >
+                          {isUrl ? (
+                            <a
+                              href={val as string}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline flex items-center gap-1 max-w-xs truncate"
+                              title={val as string}
+                            >
+                              <span className="truncate">{val}</span>
+                              <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                            </a>
+                          ) : col.type === 'percent' ? (
+                            <span>{val}%</span>
+                          ) : (
+                            <span>{typeof val === 'number' ? val.toLocaleString() : val}</span>
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function MetricInfoCard({ metric }: { metric: Metric }) {
+  return (
+    <Card className="col-span-full lg:col-span-1">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">{metric.label}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+          <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <p>
+            This data is not available via the Google Search Console API. View it directly in{' '}
+            <a
+              href="https://search.google.com/search-console"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              Google Search Console → Links
+            </a>.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function ChannelDetail({
   projectId,
@@ -268,6 +431,17 @@ export function ChannelDetail({
             <h2 className="font-semibold text-lg mb-4">All Metrics — Last 30 Days</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {channelMetrics.map(metric => {
+                // Route to special card types
+                if (metric.metricType === 'cwv') {
+                  return <MetricCWVCard key={metric.key} metric={metric} />
+                }
+                if (metric.metricType === 'table') {
+                  return <MetricTableCard key={metric.key} metric={metric} />
+                }
+                if (metric.metricType === 'info') {
+                  return <MetricInfoCard key={metric.key} metric={metric} />
+                }
+
                 const isPositive = metric.trend === 'up'
                 const isNegative = metric.trend === 'down'
                 const chartData = generateMetricHistory(metric.value, metric.trend, metric.label)

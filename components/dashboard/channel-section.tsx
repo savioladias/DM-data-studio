@@ -1,14 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { format, subDays, startOfYear } from 'date-fns'
+import { useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { KpiCard } from './kpi-card'
 import { CsvUploadButton } from './csv-upload-button'
-import { Sparkles, Loader2, ChevronDown, ChevronUp, Circle, ArrowRight } from 'lucide-react'
+import { Sparkles, Loader2, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react'
 import { getChannel } from '@/lib/channels'
 import type { ChannelId } from '@/lib/channels'
 import type { Metric, DateRange } from '@/lib/types'
@@ -184,20 +183,40 @@ export function ChannelSection({ projectId, channelId, metrics, dateRange }: Cha
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {metrics
               .filter(metric => {
-                if (channelId !== 'GOOGLE_ANALYTICS') return true
-                const overviewMetrics = [
-                  'activeUsers',
-                  'newUsers',
-                  'returningUsers',
-                  'totalUsers',
-                  'engagementRate',
-                  'eventCount',
-                  'conversions',
-                  'sessions',
-                  'screenPageViews',
-                  'dauPerMau'
-                ]
-                return overviewMetrics.includes(metric.key)
+                // Never show table/cwv/info metrics on the overview
+                if (metric.metricType && metric.metricType !== 'numeric') return false
+                if (channelId === 'GOOGLE_ANALYTICS') {
+                  return [
+                    'activeUsers',
+                    'newUsers',
+                    'returningUsers',
+                    'totalUsers',
+                    'engagementRate',
+                    'eventCount',
+                    'conversions',
+                    'sessions',
+                    'screenPageViews',
+                    'dauPerMau',
+                  ].includes(metric.key)
+                }
+                if (channelId === 'GOOGLE_SEARCH_CONSOLE') {
+                  return ['clicks', 'impressions', 'ctr', 'avgPosition'].includes(metric.key)
+                }
+                if (channelId === 'GOOGLE_ADS') {
+                  return [
+                    'clicks',
+                    'impressions',
+                    'cost',
+                    'ctr',
+                    'interactions',
+                    'conversions',
+                    'conversionRate',
+                    'interactionRate',
+                    'avgCpc',
+                    'costPerConversion',
+                  ].includes(metric.key)
+                }
+                return true
               })
               .map(metric => (
                 <KpiCard

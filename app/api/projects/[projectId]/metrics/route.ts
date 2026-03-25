@@ -3,13 +3,13 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import type { ChannelId } from '@/lib/channels'
 import { fetchGA4Metrics, fetchGA4RealtimeMetrics } from '@/lib/integrations/google/analytics'
-import { fetchGSCMetrics, fetchAllGSCMetrics } from '@/lib/integrations/google/search-console'
-import { fetchGoogleAdsMetrics } from '@/lib/integrations/google/ads'
+import { fetchGSCMetrics, fetchAllGSCMetrics, fetchGSCDimensional, fetchGSCTrafficSources } from '@/lib/integrations/google/search-console'
+import { fetchGoogleAdsMetrics, fetchGoogleAdsAgeRanges, fetchGoogleAdsGenders, fetchGoogleAdsNetworks, fetchGoogleAdsKeywords } from '@/lib/integrations/google/ads'
 import { fetchLinkedInMetrics } from '@/lib/integrations/linkedin/organic'
 import { fetchFacebookMetrics } from '@/lib/integrations/facebook/organic'
 import { fetchInstagramMetrics } from '@/lib/integrations/instagram/organic'
 import { fetchYouTubeMetrics } from '@/lib/integrations/youtube/analytics'
-import { refreshAccessToken, ensureValidAccessToken } from '@/lib/integrations/auth'
+import { ensureValidAccessToken } from '@/lib/integrations/auth'
 
 // Returns mock data when no real connector is set up yet.
 // Replace with real connector calls once API integrations are built.
@@ -37,13 +37,16 @@ function generateMockMetrics(channel: string) {
     },
     GOOGLE_ADS: {
       clicks: { value: rand(1000, 5000), previous: rand(900, 4800), unit: '', label: 'Clicks' },
-      ctr: { value: randPercent(1, 5), previous: randPercent(1, 5), unit: '%', label: 'CTR' },
       impressions: { value: rand(50000, 200000), previous: rand(45000, 190000), unit: '', label: 'Impressions' },
       conversions: { value: rand(50, 300), previous: rand(45, 280), unit: '', label: 'Conversions' },
-      costPerConversion: { value: randPercent(5, 50), previous: randPercent(5, 50), unit: '£', label: 'Cost / Conv.' },
-      totalCost: { value: rand(2000, 8000), previous: rand(1800, 7500), unit: '£', label: 'Total Spend' },
-      avgCpc: { value: randPercent(0.5, 3), previous: randPercent(0.5, 3), unit: '£', label: 'Avg CPC' },
-      avgCpm: { value: randPercent(5, 20), previous: randPercent(5, 20), unit: '£', label: 'Avg CPM' },
+      cost: { value: rand(2000, 8000), previous: rand(1800, 7500), unit: '£', label: 'Cost' },
+      ctr: { value: randPercent(1, 5), previous: randPercent(1, 5), unit: '%', label: 'Click-Through Rate (CTR)' },
+      avgCpc: { value: randPercent(0.5, 3), previous: randPercent(0.5, 3), unit: '£', label: 'Cost per Click (CPC)' },
+      interactions: { value: rand(1000, 5000), previous: rand(900, 4800), unit: '', label: 'Interactions' },
+      interactionRate: { value: randPercent(1, 10), previous: randPercent(1, 10), unit: '%', label: 'Interaction Rate' },
+      conversionRate: { value: randPercent(1, 8), previous: randPercent(1, 8), unit: '%', label: 'Conversion Rate' },
+      costPerConversion: { value: randPercent(5, 50), previous: randPercent(5, 50), unit: '£', label: 'Cost per Conversion' },
+      conversionValue: { value: rand(5000, 30000), previous: rand(4500, 28000), unit: '£', label: 'Conversion Value' },
     },
     INSTAGRAM: {
       followers: { value: rand(1000, 50000), previous: rand(950, 48000), unit: '', label: 'Followers' },
@@ -491,7 +494,7 @@ async function fetchMetricsForChannel(
       }))
     }
 
-    // Fetch Google Search Console data (real data for both current and prior period)
+    // Fetch Google Search Console data
     if (channel === 'GOOGLE_SEARCH_CONSOLE') {
       const start = new Date(startDate)
       const end = new Date(endDate)
@@ -500,26 +503,74 @@ async function fetchMetricsForChannel(
       prevEnd.setDate(prevEnd.getDate() - 1)
       const prevStart = new Date(prevEnd)
       prevStart.setDate(prevStart.getDate() - durationDays)
-      
+
       const prevStartStr = prevStart.toISOString().split('T')[0]
       const prevEndStr = prevEnd.toISOString().split('T')[0]
 
-      const [current, previous] = await Promise.all([
-        credential.accountId && credential.accountId !== 'pending-site-selection'
-          ? fetchGSCMetrics({ accessToken, siteUrl: credential.accountId, startDate, endDate })
+      const hasSite = credential.accountId && credential.accountId !== 'pending-site-selection'
+      const siteUrl = hasSite ? credential.accountId : null
+
+      // Fetch summary + dimensional data in parallel
+      const [
+        current, previous,
+        topQueries, topPages, countries, devices, trafficSources,
+      ] = await Promise.all([
+        siteUrl
+          ? fetchGSCMetrics({ accessToken, siteUrl, startDate, endDate })
           : fetchAllGSCMetrics(accessToken, startDate, endDate),
-        credential.accountId && credential.accountId !== 'pending-site-selection'
-          ? fetchGSCMetrics({ accessToken, siteUrl: credential.accountId, startDate: prevStartStr, endDate: prevEndStr })
-          : fetchAllGSCMetrics(accessToken, prevStartStr, prevEndStr)
+        siteUrl
+          ? fetchGSCMetrics({ accessToken, siteUrl, startDate: prevStartStr, endDate: prevEndStr })
+          : fetchAllGSCMetrics(accessToken, prevStartStr, prevEndStr),
+        siteUrl ? fetchGSCDimensional(accessToken, siteUrl, startDate, endDate, 'query', 25) : Promise.resolve([]),
+        siteUrl ? fetchGSCDimensional(accessToken, siteUrl, startDate, endDate, 'page', 25) : Promise.resolve([]),
+        siteUrl ? fetchGSCDimensional(accessToken, siteUrl, startDate, endDate, 'country', 25) : Promise.resolve([]),
+        siteUrl ? fetchGSCDimensional(accessToken, siteUrl, startDate, endDate, 'device', 10) : Promise.resolve([]),
+        siteUrl ? fetchGSCTrafficSources(accessToken, siteUrl, startDate, endDate) : Promise.resolve([]),
       ])
 
       if (!current) return []
       const prev = previous || { clicks: 0, impressions: 0, ctr: 0, position: 0 }
 
+      const tableColumns = {
+        queriesPages: [
+          { key: 'dimension', label: 'Query', type: 'text' as const },
+          { key: 'clicks', label: 'Clicks', type: 'number' as const },
+          { key: 'impressions', label: 'Impressions', type: 'number' as const },
+          { key: 'ctr', label: 'CTR', unit: '%', type: 'percent' as const },
+          { key: 'position', label: 'Pos.', type: 'number' as const },
+        ],
+        pages: [
+          { key: 'dimension', label: 'URL', type: 'url' as const },
+          { key: 'clicks', label: 'Clicks', type: 'number' as const },
+          { key: 'impressions', label: 'Impressions', type: 'number' as const },
+          { key: 'ctr', label: 'CTR', unit: '%', type: 'percent' as const },
+          { key: 'position', label: 'Pos.', type: 'number' as const },
+        ],
+        countries: [
+          { key: 'dimension', label: 'Country', type: 'text' as const },
+          { key: 'clicks', label: 'Clicks', type: 'number' as const },
+          { key: 'impressions', label: 'Impressions', type: 'number' as const },
+          { key: 'ctr', label: 'CTR', unit: '%', type: 'percent' as const },
+        ],
+        devices: [
+          { key: 'dimension', label: 'Device', type: 'text' as const },
+          { key: 'clicks', label: 'Clicks', type: 'number' as const },
+          { key: 'impressions', label: 'Impressions', type: 'number' as const },
+          { key: 'ctr', label: 'CTR', unit: '%', type: 'percent' as const },
+        ],
+        sources: [
+          { key: 'dimension', label: 'Source', type: 'text' as const },
+          { key: 'clicks', label: 'Clicks', type: 'number' as const },
+          { key: 'impressions', label: 'Impressions', type: 'number' as const },
+          { key: 'ctr', label: 'CTR', unit: '%', type: 'percent' as const },
+        ],
+      }
+
       return [
+        // ── Summary metrics ────────────────────────────────────────────────
         {
           key: 'clicks',
-          label: 'Clicks',
+          label: 'Total Clicks',
           value: current.clicks,
           previous: prev.clicks,
           unit: '',
@@ -528,7 +579,7 @@ async function fetchMetricsForChannel(
         },
         {
           key: 'impressions',
-          label: 'Impressions',
+          label: 'Total Impressions',
           value: current.impressions,
           previous: prev.impressions,
           unit: '',
@@ -537,7 +588,7 @@ async function fetchMetricsForChannel(
         },
         {
           key: 'ctr',
-          label: 'CTR',
+          label: 'Avg CTR',
           value: parseFloat(current.ctr.toFixed(2)),
           previous: parseFloat(prev.ctr.toFixed(2)),
           unit: '%',
@@ -550,8 +601,63 @@ async function fetchMetricsForChannel(
           value: parseFloat(current.position.toFixed(1)),
           previous: parseFloat(prev.position.toFixed(1)),
           unit: '',
-          deltaPercent: calculateDelta(prev.position, current.position), // Inverted: lower is better
+          deltaPercent: calculateDelta(prev.position, current.position), // Inverted
           trend: calculateTrend(prev.position, current.position),
+        },
+        // ── Dimensional tables ─────────────────────────────────────────────
+        {
+          key: 'topQueries',
+          label: 'Top Queries',
+          value: topQueries.length,
+          unit: '',
+          metricType: 'table' as const,
+          tableColumns: tableColumns.queriesPages,
+          tableData: topQueries,
+        },
+        {
+          key: 'topPages',
+          label: 'Top Pages',
+          value: topPages.length,
+          unit: '',
+          metricType: 'table' as const,
+          tableColumns: tableColumns.pages,
+          tableData: topPages,
+        },
+        {
+          key: 'topClickedUrls',
+          label: 'Top Clicked URLs',
+          value: topPages.length,
+          unit: '',
+          metricType: 'table' as const,
+          tableColumns: tableColumns.pages,
+          tableData: topPages,
+        },
+        {
+          key: 'trafficSources',
+          label: 'Traffic Sources',
+          value: trafficSources.length,
+          unit: '',
+          metricType: 'table' as const,
+          tableColumns: tableColumns.sources,
+          tableData: trafficSources,
+        },
+        {
+          key: 'countries',
+          label: 'Countries',
+          value: countries.length,
+          unit: '',
+          metricType: 'table' as const,
+          tableColumns: tableColumns.countries,
+          tableData: countries,
+        },
+        {
+          key: 'devices',
+          label: 'Devices',
+          value: devices.length,
+          unit: '',
+          metricType: 'table' as const,
+          tableColumns: tableColumns.devices,
+          tableData: devices,
         },
       ]
     }
@@ -786,7 +892,10 @@ async function fetchMetricsForChannel(
         return []
       }
 
-      // Calculate previous period (same duration, shifted back)
+      const customerId = credential.accountId
+      const adsConfig = { accessToken, customerId, startDate, endDate }
+
+      // Calculate previous period
       const start = new Date(startDate)
       const end = new Date(endDate)
       const durationDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
@@ -794,27 +903,26 @@ async function fetchMetricsForChannel(
       prevEnd.setDate(prevEnd.getDate() - 1)
       const prevStart = new Date(prevEnd)
       prevStart.setDate(prevStart.getDate() - durationDays)
+      const prevStartStr = prevStart.toISOString().split('T')[0]
+      const prevEndStr = prevEnd.toISOString().split('T')[0]
+      const prevConfig = { accessToken, customerId, startDate: prevStartStr, endDate: prevEndStr }
 
-      const [current, previous] = await Promise.all([
-        fetchGoogleAdsMetrics({ accessToken, customerId: credential.accountId, startDate, endDate }),
-        fetchGoogleAdsMetrics({
-          accessToken,
-          customerId: credential.accountId,
-          startDate: prevStart.toISOString().split('T')[0],
-          endDate: prevEnd.toISOString().split('T')[0],
-        }),
+      const [current, previous, ageRanges, genders, networks, keywords] = await Promise.all([
+        fetchGoogleAdsMetrics(adsConfig),
+        fetchGoogleAdsMetrics(prevConfig),
+        fetchGoogleAdsAgeRanges(adsConfig),
+        fetchGoogleAdsGenders(adsConfig),
+        fetchGoogleAdsNetworks(adsConfig),
+        fetchGoogleAdsKeywords(adsConfig, 25),
       ])
 
-      const metrics: any[] = [
-        {
-          key: 'impressions',
-          label: 'Impressions',
-          value: current.impressions,
-          previous: previous.impressions,
-          unit: '',
-          deltaPercent: calculateDelta(current.impressions, previous.impressions),
-          trend: calculateTrend(current.impressions, previous.impressions),
-        },
+      const demographicsRows = [
+        ...ageRanges.map(r => ({ group: 'Age', segment: r.dimension, impressions: r.impressions, clicks: r.clicks, conversions: r.conversions, spend: r.spend, ctr: r.ctr })),
+        ...genders.map(r => ({ group: 'Gender', segment: r.dimension, impressions: r.impressions, clicks: r.clicks, conversions: r.conversions, spend: r.spend, ctr: r.ctr })),
+      ]
+
+      return [
+        // ── Core metrics ───────────────────────────────────────────────────
         {
           key: 'clicks',
           label: 'Clicks',
@@ -825,13 +933,13 @@ async function fetchMetricsForChannel(
           trend: calculateTrend(current.clicks, previous.clicks),
         },
         {
-          key: 'spend',
-          label: 'Total Spend',
-          value: parseFloat(current.spend.toFixed(2)),
-          previous: parseFloat(previous.spend.toFixed(2)),
-          unit: '£',
-          deltaPercent: calculateDelta(current.spend, previous.spend),
-          trend: calculateTrend(current.spend, previous.spend),
+          key: 'impressions',
+          label: 'Impressions',
+          value: current.impressions,
+          previous: previous.impressions,
+          unit: '',
+          deltaPercent: calculateDelta(current.impressions, previous.impressions),
+          trend: calculateTrend(current.impressions, previous.impressions),
         },
         {
           key: 'conversions',
@@ -842,37 +950,130 @@ async function fetchMetricsForChannel(
           deltaPercent: calculateDelta(current.conversions, previous.conversions),
           trend: calculateTrend(current.conversions, previous.conversions),
         },
-      ]
-
-      if (current.impressions > 0) {
-        const ctr = (current.clicks / current.impressions) * 100
-        const prevCtr = previous.impressions > 0 ? (previous.clicks / previous.impressions) * 100 : 0
-        metrics.push({
-          key: 'ctr',
-          label: 'CTR',
-          value: parseFloat(ctr.toFixed(2)),
-          previous: parseFloat(prevCtr.toFixed(2)),
-          unit: '%',
-          deltaPercent: calculateDelta(ctr, prevCtr),
-          trend: calculateTrend(ctr, prevCtr),
-        })
-      }
-
-      if (current.conversions > 0) {
-        const cpa = current.spend / current.conversions
-        const prevCpa = previous.conversions > 0 ? previous.spend / previous.conversions : 0
-        metrics.push({
-          key: 'costPerConversion',
-          label: 'Cost / Conv.',
-          value: parseFloat(cpa.toFixed(2)),
-          previous: parseFloat(prevCpa.toFixed(2)),
+        {
+          key: 'cost',
+          label: 'Cost',
+          value: parseFloat(current.spend.toFixed(2)),
+          previous: parseFloat(previous.spend.toFixed(2)),
           unit: '£',
-          deltaPercent: calculateDelta(prevCpa, cpa), // inverted: lower is better
-          trend: calculateTrend(prevCpa, cpa),
-        })
-      }
-
-      return metrics
+          deltaPercent: calculateDelta(current.spend, previous.spend),
+          trend: calculateTrend(current.spend, previous.spend),
+        },
+        {
+          key: 'ctr',
+          label: 'Click-Through Rate (CTR)',
+          value: current.ctr,
+          previous: previous.ctr,
+          unit: '%',
+          deltaPercent: calculateDelta(current.ctr, previous.ctr),
+          trend: calculateTrend(current.ctr, previous.ctr),
+        },
+        {
+          key: 'avgCpc',
+          label: 'Cost per Click (CPC)',
+          value: current.avgCpc,
+          previous: previous.avgCpc,
+          unit: '£',
+          deltaPercent: calculateDelta(previous.avgCpc, current.avgCpc), // inverted: lower is better
+          trend: calculateTrend(previous.avgCpc, current.avgCpc),
+        },
+        {
+          key: 'interactions',
+          label: 'Interactions',
+          value: current.interactions,
+          previous: previous.interactions,
+          unit: '',
+          deltaPercent: calculateDelta(current.interactions, previous.interactions),
+          trend: calculateTrend(current.interactions, previous.interactions),
+        },
+        {
+          key: 'interactionRate',
+          label: 'Interaction Rate',
+          value: current.interactionRate,
+          previous: previous.interactionRate,
+          unit: '%',
+          deltaPercent: calculateDelta(current.interactionRate, previous.interactionRate),
+          trend: calculateTrend(current.interactionRate, previous.interactionRate),
+        },
+        {
+          key: 'conversionRate',
+          label: 'Conversion Rate',
+          value: current.conversionRate,
+          previous: previous.conversionRate,
+          unit: '%',
+          deltaPercent: calculateDelta(current.conversionRate, previous.conversionRate),
+          trend: calculateTrend(current.conversionRate, previous.conversionRate),
+        },
+        {
+          key: 'costPerConversion',
+          label: 'Cost per Conversion',
+          value: current.costPerConversion,
+          previous: previous.costPerConversion,
+          unit: '£',
+          deltaPercent: calculateDelta(previous.costPerConversion, current.costPerConversion), // inverted
+          trend: calculateTrend(previous.costPerConversion, current.costPerConversion),
+        },
+        {
+          key: 'conversionValue',
+          label: 'Conversion Value',
+          value: parseFloat(current.conversionsValue.toFixed(2)),
+          previous: parseFloat(previous.conversionsValue.toFixed(2)),
+          unit: '£',
+          deltaPercent: calculateDelta(current.conversionsValue, previous.conversionsValue),
+          trend: calculateTrend(current.conversionsValue, previous.conversionsValue),
+        },
+        // ── Dimensional tables ─────────────────────────────────────────────
+        {
+          key: 'demographics',
+          label: 'Demographics',
+          value: demographicsRows.length,
+          unit: '',
+          metricType: 'table' as const,
+          tableColumns: [
+            { key: 'group', label: 'Group', type: 'text' as const },
+            { key: 'segment', label: 'Segment', type: 'text' as const },
+            { key: 'impressions', label: 'Impressions', type: 'number' as const },
+            { key: 'clicks', label: 'Clicks', type: 'number' as const },
+            { key: 'conversions', label: 'Conv.', type: 'number' as const },
+            { key: 'spend', label: 'Cost', type: 'number' as const },
+            { key: 'ctr', label: 'CTR', unit: '%', type: 'percent' as const },
+          ],
+          tableData: demographicsRows,
+        },
+        {
+          key: 'networks',
+          label: 'Networks (Channels)',
+          value: networks.length,
+          unit: '',
+          metricType: 'table' as const,
+          tableColumns: [
+            { key: 'network', label: 'Network', type: 'text' as const },
+            { key: 'impressions', label: 'Impressions', type: 'number' as const },
+            { key: 'clicks', label: 'Clicks', type: 'number' as const },
+            { key: 'conversions', label: 'Conv.', type: 'number' as const },
+            { key: 'spend', label: 'Cost', type: 'number' as const },
+            { key: 'ctr', label: 'CTR', unit: '%', type: 'percent' as const },
+          ],
+          tableData: networks,
+        },
+        {
+          key: 'keywords',
+          label: 'Keywords',
+          value: keywords.length,
+          unit: '',
+          metricType: 'table' as const,
+          tableColumns: [
+            { key: 'keyword', label: 'Keyword', type: 'text' as const },
+            { key: 'matchType', label: 'Match', type: 'text' as const },
+            { key: 'impressions', label: 'Impressions', type: 'number' as const },
+            { key: 'clicks', label: 'Clicks', type: 'number' as const },
+            { key: 'conversions', label: 'Conv.', type: 'number' as const },
+            { key: 'spend', label: 'Cost', type: 'number' as const },
+            { key: 'ctr', label: 'CTR', unit: '%', type: 'percent' as const },
+          ],
+          tableData: keywords,
+        },
+      ]
     }
 
     // For other channels, return empty (no integrations built yet)
