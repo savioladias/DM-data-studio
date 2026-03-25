@@ -135,8 +135,22 @@ export function ChannelDetail({
     }
   }
 
-  const formatValue = (v: number | string) => {
+  const formatValue = (v: number | string, unit?: string) => {
     if (typeof v === 'string') return v
+    
+    // Handle time units (seconds)
+    if (unit === 's') {
+      if (v < 60) return `${v.toFixed(1)}s`
+      const mins = Math.floor(v / 60)
+      const secs = Math.round(v % 60)
+      return `${mins}m ${secs}s`
+    }
+    
+    // Handle percentage units
+    if (unit === '%') {
+      return `${v.toLocaleString()}%`
+    }
+
     if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
     if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`
     return v.toLocaleString()
@@ -269,8 +283,8 @@ export function ChannelDetail({
                             {metric.unit && ['£', '$', '€'].includes(metric.unit) && (
                               <span>{metric.unit}</span>
                             )}
-                            {formatValue(metric.value)}
-                            {metric.unit && !['£', '$', '€'].includes(metric.unit) && (
+                            {formatValue(metric.value, metric.unit)}
+                            {metric.unit && !['£', '$', '€', 's', '%'].includes(metric.unit) && (
                               <span> {metric.unit}</span>
                             )}
                           </p>

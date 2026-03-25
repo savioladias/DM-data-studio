@@ -182,21 +182,38 @@ export function ChannelSection({ projectId, channelId, metrics, dateRange }: Cha
       {!collapsed && (
         <div className="space-y-3">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {metrics.map(metric => (
-              <KpiCard
-                key={metric.key}
-                projectId={projectId}
-                channel={channelId}
-                metricKey={metric.key}
-                label={metric.label}
-                value={metric.value}
-                previous={metric.previous}
-                unit={metric.unit}
-                deltaPercent={metric.deltaPercent}
-                trend={metric.trend}
-                inverseColors={metric.key === 'bounceRate'}
-              />
-            ))}
+            {metrics
+              .filter(metric => {
+                if (channelId !== 'GOOGLE_ANALYTICS') return true
+                const overviewMetrics = [
+                  'activeUsers',
+                  'newUsers',
+                  'returningUsers',
+                  'totalUsers',
+                  'engagementRate',
+                  'eventCount',
+                  'conversions',
+                  'sessions',
+                  'screenPageViews',
+                  'dauPerMau'
+                ]
+                return overviewMetrics.includes(metric.key)
+              })
+              .map(metric => (
+                <KpiCard
+                  key={metric.key}
+                  projectId={projectId}
+                  channel={channelId}
+                  metricKey={metric.key}
+                  label={metric.key === 'dauPerMau' ? 'User Retention' : metric.label}
+                  value={metric.value}
+                  previous={metric.previous}
+                  unit={metric.unit}
+                  deltaPercent={metric.deltaPercent}
+                  trend={metric.trend}
+                  inverseColors={metric.key === 'bounceRate'}
+                />
+              ))}
           </div>
         </div>
       )}

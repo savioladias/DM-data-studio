@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import type { ChannelId } from '@/lib/channels'
-import { fetchGA4Metrics } from '@/lib/integrations/google/analytics'
+import { fetchGA4Metrics, fetchGA4RealtimeMetrics } from '@/lib/integrations/google/analytics'
 import { fetchGSCMetrics, fetchAllGSCMetrics } from '@/lib/integrations/google/search-console'
 import { fetchGoogleAdsMetrics } from '@/lib/integrations/google/ads'
 import { fetchLinkedInMetrics } from '@/lib/integrations/linkedin/organic'
@@ -265,24 +265,17 @@ async function fetchMetricsForChannel(
         return []
       }
 
-      const { current, previous } = await fetchGA4Metrics({
-        accessToken,
-        propertyId: credential.accountId,
-        startDate,
-        endDate,
-      })
+      const [{ current, previous }, realtime] = await Promise.all([
+        fetchGA4Metrics({
+          accessToken,
+          propertyId: credential.accountId,
+          startDate,
+          endDate,
+        }),
+        fetchGA4RealtimeMetrics(accessToken, credential.accountId)
+      ])
 
-      return [
-        {
-          key: 'sessions',
-          label: 'Sessions',
-          value: Math.round(current.sessions),
-          previous: Math.round(previous.sessions),
-          unit: '',
-          deltaPercent: calculateDelta(current.sessions, previous.sessions),
-          trend: calculateTrend(current.sessions, previous.sessions),
-          historicalData: undefined,
-        },
+      const metrics = [
         {
           key: 'activeUsers',
           label: 'Active Users',
@@ -291,7 +284,24 @@ async function fetchMetricsForChannel(
           unit: '',
           deltaPercent: calculateDelta(current.activeUsers, previous.activeUsers),
           trend: calculateTrend(current.activeUsers, previous.activeUsers),
-          historicalData: undefined,
+        },
+        {
+          key: 'activeUsers30m',
+          label: 'Active Users (Last 30 min)',
+          value: realtime.activeUsers,
+          previous: 0,
+          unit: '',
+          deltaPercent: 0,
+          trend: 'stable' as const,
+        },
+        {
+          key: 'totalUsers',
+          label: 'Total Users',
+          value: Math.round(current.totalUsers),
+          previous: Math.round(previous.totalUsers),
+          unit: '',
+          deltaPercent: calculateDelta(current.totalUsers, previous.totalUsers),
+          trend: calculateTrend(current.totalUsers, previous.totalUsers),
         },
         {
           key: 'newUsers',
@@ -301,37 +311,24 @@ async function fetchMetricsForChannel(
           unit: '',
           deltaPercent: calculateDelta(current.newUsers, previous.newUsers),
           trend: calculateTrend(current.newUsers, previous.newUsers),
-          historicalData: undefined,
         },
         {
-          key: 'bounceRate',
-          label: 'Bounce Rate',
-          value: parseFloat((current.bounceRate * 100).toFixed(1)),
-          previous: parseFloat((previous.bounceRate * 100).toFixed(1)),
-          unit: '%',
-          deltaPercent: calculateDelta(previous.bounceRate, current.bounceRate), // Inverted: lower is better
-          trend: calculateTrend(previous.bounceRate, current.bounceRate), // Inverted
-          historicalData: undefined,
-        },
-        {
-          key: 'screenPageViews',
-          label: 'Page Views',
-          value: Math.round(current.screenPageViews),
-          previous: Math.round(previous.screenPageViews),
+          key: 'returningUsers',
+          label: 'Returning Users',
+          value: Math.max(0, Math.round(current.totalUsers - current.newUsers)),
+          previous: Math.max(0, Math.round(previous.totalUsers - previous.newUsers)),
           unit: '',
-          deltaPercent: calculateDelta(current.screenPageViews, previous.screenPageViews),
-          trend: calculateTrend(current.screenPageViews, previous.screenPageViews),
-          historicalData: undefined,
+          deltaPercent: calculateDelta(current.totalUsers - current.newUsers, previous.totalUsers - previous.newUsers),
+          trend: calculateTrend(current.totalUsers - current.newUsers, previous.totalUsers - previous.newUsers),
         },
         {
-          key: 'engagementRate',
-          label: 'Engagement Rate',
-          value: parseFloat((current.engagementRate * 100).toFixed(1)),
-          previous: parseFloat((previous.engagementRate * 100).toFixed(1)),
-          unit: '%',
-          deltaPercent: calculateDelta(current.engagementRate, previous.engagementRate),
-          trend: calculateTrend(current.engagementRate, previous.engagementRate),
-          historicalData: undefined,
+          key: 'sessions',
+          label: 'Sessions',
+          value: Math.round(current.sessions),
+          previous: Math.round(previous.sessions),
+          unit: '',
+          deltaPercent: calculateDelta(current.sessions, previous.sessions),
+          trend: calculateTrend(current.sessions, previous.sessions),
         },
         {
           key: 'engagedSessions',
@@ -341,19 +338,157 @@ async function fetchMetricsForChannel(
           unit: '',
           deltaPercent: calculateDelta(current.engagedSessions, previous.engagedSessions),
           trend: calculateTrend(current.engagedSessions, previous.engagedSessions),
-          historicalData: undefined,
+        },
+        {
+          key: 'engagementRate',
+          label: 'Engagement Rate',
+          value: parseFloat((current.engagementRate * 100).toFixed(1)),
+          previous: parseFloat((previous.engagementRate * 100).toFixed(1)),
+          unit: '%',
+          deltaPercent: calculateDelta(current.engagementRate, previous.engagementRate),
+          trend: calculateTrend(current.engagementRate, previous.engagementRate),
+        },
+        {
+          key: 'screenPageViews',
+          label: 'Views',
+          value: Math.round(current.screenPageViews),
+          previous: Math.round(previous.screenPageViews),
+          unit: '',
+          deltaPercent: calculateDelta(current.screenPageViews, previous.screenPageViews),
+          trend: calculateTrend(current.screenPageViews, previous.screenPageViews),
         },
         {
           key: 'conversions',
-          label: 'Key Events / Conversions',
+          label: 'Key Events',
           value: Math.round(current.conversions),
           previous: Math.round(previous.conversions),
           unit: '',
           deltaPercent: calculateDelta(current.conversions, previous.conversions),
           trend: calculateTrend(current.conversions, previous.conversions),
-          historicalData: undefined,
+        },
+        {
+          key: 'averageEngagementTime',
+          label: 'Avg Engagement Time / Active User',
+          value: parseFloat((current.userEngagementDuration / (current.activeUsers || 1)).toFixed(2)),
+          previous: parseFloat((previous.userEngagementDuration / (previous.activeUsers || 1)).toFixed(2)),
+          unit: 's',
+          deltaPercent: calculateDelta(current.userEngagementDuration / (current.activeUsers || 1), previous.userEngagementDuration / (previous.activeUsers || 1)),
+          trend: calculateTrend(current.userEngagementDuration / (current.activeUsers || 1), previous.userEngagementDuration / (previous.activeUsers || 1)),
+        },
+        {
+          key: 'averageEngagementTimePerSession',
+          label: 'Avg Engagement Time / Session',
+          value: parseFloat((current.userEngagementDuration / (current.sessions || 1)).toFixed(2)),
+          previous: parseFloat((previous.userEngagementDuration / (previous.sessions || 1)).toFixed(2)),
+          unit: 's',
+          deltaPercent: calculateDelta(current.userEngagementDuration / (current.sessions || 1), previous.userEngagementDuration / (previous.sessions || 1)),
+          trend: calculateTrend(current.userEngagementDuration / (current.sessions || 1), previous.userEngagementDuration / (previous.sessions || 1)),
+        },
+        {
+          key: 'engagedSessionsPerActiveUser',
+          label: 'Engaged Sessions / Active User',
+          value: parseFloat((current.engagedSessions / (current.activeUsers || 1)).toFixed(2)),
+          previous: parseFloat((previous.engagedSessions / (previous.activeUsers || 1)).toFixed(2)),
+          unit: '',
+          deltaPercent: calculateDelta(current.engagedSessions / (current.activeUsers || 1), previous.engagedSessions / (previous.activeUsers || 1)),
+          trend: calculateTrend(current.engagedSessions / (current.activeUsers || 1), previous.engagedSessions / (previous.activeUsers || 1)),
+        },
+        {
+          key: 'eventCount',
+          label: 'Event Count',
+          value: Math.round(current.eventCount),
+          previous: Math.round(previous.eventCount),
+          unit: '',
+          deltaPercent: calculateDelta(current.eventCount, previous.eventCount),
+          trend: calculateTrend(current.eventCount, previous.eventCount),
+        },
+        {
+          key: 'eventCountPerActiveUser',
+          label: 'Event Count / Active User',
+          value: parseFloat((current.eventCount / (current.activeUsers || 1)).toFixed(2)),
+          previous: parseFloat((previous.eventCount / (previous.activeUsers || 1)).toFixed(2)),
+          unit: '',
+          deltaPercent: calculateDelta(current.eventCount / (current.activeUsers || 1), previous.eventCount / (previous.activeUsers || 1)),
+          trend: calculateTrend(current.eventCount / (current.activeUsers || 1), previous.eventCount / (previous.activeUsers || 1)),
+        },
+        {
+          key: 'eventsPerSession',
+          label: 'Events / Session',
+          value: parseFloat(current.eventsPerSession.toFixed(2)),
+          previous: parseFloat(previous.eventsPerSession.toFixed(2)),
+          unit: '',
+          deltaPercent: calculateDelta(current.eventsPerSession, previous.eventsPerSession),
+          trend: calculateTrend(current.eventsPerSession, previous.eventsPerSession),
+        },
+        {
+          key: 'sessionKeyEventRate',
+          label: 'Session Key Event Rate',
+          value: parseFloat(((current.conversions / (current.sessions || 1)) * 100).toFixed(2)),
+          previous: parseFloat(((previous.conversions / (previous.sessions || 1)) * 100).toFixed(2)),
+          unit: '%',
+          deltaPercent: calculateDelta(current.conversions / (current.sessions || 1), previous.conversions / (previous.sessions || 1)),
+          trend: calculateTrend(current.conversions / (current.sessions || 1), previous.conversions / (previous.sessions || 1)),
+        },
+        {
+          key: 'userEngagementDuration',
+          label: 'User Engagement',
+          value: Math.round(current.userEngagementDuration),
+          previous: Math.round(previous.userEngagementDuration),
+          unit: 's',
+          deltaPercent: calculateDelta(current.userEngagementDuration, previous.userEngagementDuration),
+          trend: calculateTrend(current.userEngagementDuration, previous.userEngagementDuration),
+        },
+        {
+          key: 'userKeyEventRate',
+          label: 'User Key Event Rate',
+          value: parseFloat(((current.conversions / (current.activeUsers || 1)) * 100).toFixed(2)),
+          previous: parseFloat(((previous.conversions / (previous.activeUsers || 1)) * 100).toFixed(2)),
+          unit: '%',
+          deltaPercent: calculateDelta(current.conversions / (current.activeUsers || 1), previous.conversions / (previous.activeUsers || 1)),
+          trend: calculateTrend(current.conversions / (current.activeUsers || 1), previous.conversions / (previous.activeUsers || 1)),
+        },
+        {
+          key: 'dauPerMau',
+          label: 'User Stickiness (DAU/MAU)',
+          value: parseFloat((current.dauPerMau * 100).toFixed(1)),
+          previous: parseFloat((previous.dauPerMau * 100).toFixed(1)),
+          unit: '%',
+          deltaPercent: calculateDelta(current.dauPerMau, previous.dauPerMau),
+          trend: calculateTrend(current.dauPerMau, previous.dauPerMau),
+        },
+        {
+          key: 'dauPerWau',
+          label: 'User Stickiness (DAU/WAU)',
+          value: parseFloat((current.dauPerWau * 100).toFixed(1)),
+          previous: parseFloat((previous.dauPerWau * 100).toFixed(1)),
+          unit: '%',
+          deltaPercent: calculateDelta(current.dauPerWau, previous.dauPerWau),
+          trend: calculateTrend(current.dauPerWau, previous.dauPerWau),
+        },
+        {
+          key: 'wauPerMau',
+          label: 'User Stickiness (WAU/MAU)',
+          value: parseFloat((current.wauPerMau * 100).toFixed(1)),
+          previous: parseFloat((previous.wauPerMau * 100).toFixed(1)),
+          unit: '%',
+          deltaPercent: calculateDelta(current.wauPerMau, previous.wauPerMau),
+          trend: calculateTrend(current.wauPerMau, previous.wauPerMau),
+        },
+        {
+          key: 'screenPageViewsPerActiveUser',
+          label: 'Views / Active User',
+          value: parseFloat((current.screenPageViews / (current.activeUsers || 1)).toFixed(2)),
+          previous: parseFloat((previous.screenPageViews / (previous.activeUsers || 1)).toFixed(2)),
+          unit: '',
+          deltaPercent: calculateDelta(current.screenPageViews / (current.activeUsers || 1), previous.screenPageViews / (previous.activeUsers || 1)),
+          trend: calculateTrend(current.screenPageViews / (current.activeUsers || 1), previous.screenPageViews / (previous.activeUsers || 1)),
         },
       ]
+
+      return metrics.map(m => ({
+        ...m,
+        historicalData: undefined,
+      }))
     }
 
     // Fetch Google Search Console data (real data for both current and prior period)

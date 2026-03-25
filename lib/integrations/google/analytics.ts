@@ -65,15 +65,24 @@ export async function fetchGA4Properties(
   return properties
 }
 
-const METRIC_NAMES = [
+const METRIC_SET_1 = [
   'activeUsers',
   'newUsers',
+  'totalUsers',
   'sessions',
-  'bounceRate',
-  'screenPageViews',
-  'engagementRate',
   'engagedSessions',
-  'conversions'
+  'engagementRate',
+  'screenPageViews',
+  'conversions',
+  'userEngagementDuration',
+  'eventCount'
+]
+
+const METRIC_SET_2 = [
+  'eventsPerSession',
+  'dauPerMau',
+  'dauPerWau',
+  'wauPerMau'
 ]
 
 /** Run a single aggregate GA4 report (no dimensions = one row total) */
@@ -81,7 +90,8 @@ async function runAggregateReport(
   accessToken: string,
   propertyId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
+  metrics: string[]
 ): Promise<Record<string, number>> {
   const response = await fetch(
     `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
@@ -93,7 +103,7 @@ async function runAggregateReport(
       },
       body: JSON.stringify({
         dateRanges: [{ startDate, endDate }],
-        metrics: METRIC_NAMES.map(name => ({ name })),
+        metrics: metrics.map(name => ({ name })),
       }),
     }
   )
@@ -108,12 +118,12 @@ async function runAggregateReport(
   }
 
   const result: Record<string, number> = {}
-  METRIC_NAMES.forEach(k => { result[k] = 0 })
+  metrics.forEach(k => { result[k] = 0 })
 
   const row = data.rows?.[0]
   if (row) {
     row.metricValues.forEach((mv, idx) => {
-      result[METRIC_NAMES[idx]] = parseFloat(mv.value)
+      result[metrics[idx]] = parseFloat(mv.value)
     })
   }
 
@@ -136,10 +146,56 @@ export async function fetchGA4Metrics(config: GA4FetchConfig): Promise<GA4Aggreg
   const priorStart = new Date(priorEnd.getTime() - durationDays * 24 * 60 * 60 * 1000)
   const fmt = (d: Date) => d.toISOString().split('T')[0]
 
-  const [current, previous] = await Promise.all([
-    runAggregateReport(config.accessToken, propertyId, config.startDate, config.endDate),
-    runAggregateReport(config.accessToken, propertyId, fmt(priorStart), fmt(priorEnd)),
+  const [current1, previous1, current2, previous2] = await Promise.all([
+    runAggregateReport(config.accessToken, propertyId, config.startDate, config.endDate, METRIC_SET_1),
+    runAggregateReport(config.accessToken, propertyId, fmt(priorStart), fmt(priorEnd), METRIC_SET_1),
+    runAggregateReport(config.accessToken, propertyId, config.startDate, config.endDate, METRIC_SET_2),
+    runAggregateReport(config.accessToken, propertyId, fmt(priorStart), fmt(priorEnd), METRIC_SET_2),
   ])
 
-  return { current, previous }
+  return {
+    current: { ...current1, ...current2 },
+    previous: { ...previous1, ...previous2 }
+  }
+}
+
+/**
+ * Fetch realtime active users for the last 30 minutes
+ */
+export async function fetchGA4RealtimeMetrics(
+  accessToken: string,
+  propertyId: string
+): Promise<{ activeUsers: number }> {
+  try {
+    const propId = propertyId.replace('properties/', '')
+    const response = await fetch(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propId}:runRealtimeReport`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          metrics: [{ name: 'activeUsers' }],
+        }),
+      }
+    )
+
+    if (!response.ok) {
+      console.error('GA4 Realtime API error:', await response.text())
+      return { activeUsers: 0 }
+    }
+
+    const data = (await response.json()) as {
+      rows?: Array<{ metricValues: Array<{ value: string }> }>
+    }
+
+    return {
+      activeUsers: parseInt(data.rows?.[0]?.metricValues?.[0]?.value || '0', 10),
+    }
+  } catch (error) {
+    console.error('Error fetching GA4 realtime metrics:', error)
+    return { activeUsers: 0 }
+  }
 }
