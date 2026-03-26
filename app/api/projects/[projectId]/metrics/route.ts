@@ -9,6 +9,7 @@ import { fetchLinkedInMetrics } from '@/lib/integrations/linkedin/organic'
 import { fetchFacebookMetrics } from '@/lib/integrations/facebook/organic'
 import { fetchInstagramMetrics } from '@/lib/integrations/instagram/organic'
 import { fetchYouTubeMetrics } from '@/lib/integrations/youtube/analytics'
+import { fetchMetaAdsAccountMetrics, fetchMetaAdsCampaigns, fetchMetaAdsAdSets, fetchMetaAdsAds } from '@/lib/integrations/meta/ads'
 import { ensureValidAccessToken } from '@/lib/integrations/auth'
 
 // Returns mock data when no real connector is set up yet.
@@ -1072,6 +1073,142 @@ async function fetchMetricsForChannel(
             { key: 'ctr', label: 'CTR', unit: '%', type: 'percent' as const },
           ],
           tableData: keywords,
+        },
+      ]
+    }
+
+    // Fetch Meta Ads data
+    if (channel === 'META_ADS') {
+      if (!credential.accountId || credential.accountId === 'pending-account-selection') {
+        return []
+      }
+
+      const metaConfig = { accessToken, accountId: credential.accountId, startDate, endDate }
+
+      // Calculate previous period
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      const durationDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+      const prevEnd = new Date(start)
+      prevEnd.setDate(prevEnd.getDate() - 1)
+      const prevStart = new Date(prevEnd)
+      prevStart.setDate(prevStart.getDate() - durationDays)
+      const prevConfig = {
+        accessToken,
+        accountId: credential.accountId,
+        startDate: prevStart.toISOString().split('T')[0],
+        endDate: prevEnd.toISOString().split('T')[0],
+      }
+
+      const [current, previous, campaigns, adSets, ads] = await Promise.all([
+        fetchMetaAdsAccountMetrics(metaConfig),
+        fetchMetaAdsAccountMetrics(prevConfig),
+        fetchMetaAdsCampaigns(metaConfig),
+        fetchMetaAdsAdSets(metaConfig),
+        fetchMetaAdsAds(metaConfig),
+      ])
+
+      return [
+        {
+          key: 'results',
+          label: 'Results',
+          value: current.results,
+          previous: previous.results,
+          unit: '',
+          deltaPercent: calculateDelta(current.results, previous.results),
+          trend: calculateTrend(current.results, previous.results),
+        },
+        {
+          key: 'costPerResult',
+          label: 'Cost per Result',
+          value: parseFloat(current.costPerResult.toFixed(2)),
+          previous: parseFloat(previous.costPerResult.toFixed(2)),
+          unit: '£',
+          deltaPercent: calculateDelta(current.costPerResult, previous.costPerResult),
+          trend: calculateTrend(current.costPerResult, previous.costPerResult),
+        },
+        {
+          key: 'spend',
+          label: 'Amount Spent',
+          value: parseFloat(current.spend.toFixed(2)),
+          previous: parseFloat(previous.spend.toFixed(2)),
+          unit: '£',
+          deltaPercent: calculateDelta(current.spend, previous.spend),
+          trend: calculateTrend(current.spend, previous.spend),
+        },
+        {
+          key: 'impressions',
+          label: 'Impressions',
+          value: current.impressions,
+          previous: previous.impressions,
+          unit: '',
+          deltaPercent: calculateDelta(current.impressions, previous.impressions),
+          trend: calculateTrend(current.impressions, previous.impressions),
+        },
+        {
+          key: 'reach',
+          label: 'Reach',
+          value: current.reach,
+          previous: previous.reach,
+          unit: '',
+          deltaPercent: calculateDelta(current.reach, previous.reach),
+          trend: calculateTrend(current.reach, previous.reach),
+        },
+        // Campaign-level table
+        {
+          key: 'campaigns',
+          label: 'Campaigns',
+          value: campaigns.length,
+          unit: '',
+          metricType: 'table' as const,
+          tableColumns: [
+            { key: 'name', label: 'Campaign', type: 'text' as const },
+            { key: 'impressions', label: 'Impressions', type: 'number' as const },
+            { key: 'reach', label: 'Reach', type: 'number' as const },
+            { key: 'spend', label: 'Amount Spent', type: 'number' as const },
+            { key: 'results', label: 'Results', type: 'number' as const },
+            { key: 'costPerResult', label: 'Cost / Result', type: 'number' as const },
+            { key: 'dailyBudget', label: 'Daily Budget', type: 'number' as const },
+            { key: 'lifetimeBudget', label: 'Lifetime Budget', type: 'number' as const },
+            { key: 'status', label: 'Status', type: 'text' as const },
+          ],
+          tableData: campaigns,
+        },
+        // Ad set-level table
+        {
+          key: 'adSets',
+          label: 'Ad Sets',
+          value: adSets.length,
+          unit: '',
+          metricType: 'table' as const,
+          tableColumns: [
+            { key: 'name', label: 'Ad Set', type: 'text' as const },
+            { key: 'campaignName', label: 'Campaign', type: 'text' as const },
+            { key: 'impressions', label: 'Impressions', type: 'number' as const },
+            { key: 'reach', label: 'Reach', type: 'number' as const },
+            { key: 'spend', label: 'Amount Spent', type: 'number' as const },
+            { key: 'results', label: 'Results', type: 'number' as const },
+            { key: 'costPerResult', label: 'Cost / Result', type: 'number' as const },
+          ],
+          tableData: adSets,
+        },
+        // Ad-level table
+        {
+          key: 'ads',
+          label: 'Ads',
+          value: ads.length,
+          unit: '',
+          metricType: 'table' as const,
+          tableColumns: [
+            { key: 'name', label: 'Ad', type: 'text' as const },
+            { key: 'adSetName', label: 'Ad Set', type: 'text' as const },
+            { key: 'impressions', label: 'Impressions', type: 'number' as const },
+            { key: 'reach', label: 'Reach', type: 'number' as const },
+            { key: 'spend', label: 'Amount Spent', type: 'number' as const },
+            { key: 'results', label: 'Results', type: 'number' as const },
+            { key: 'costPerResult', label: 'Cost / Result', type: 'number' as const },
+          ],
+          tableData: ads,
         },
       ]
     }

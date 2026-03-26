@@ -11,6 +11,7 @@ import type { ChannelId } from '@/lib/channels'
 import { cn } from '@/lib/utils'
 import { GA4PropertyPicker } from '@/components/ga4-property-picker'
 import { GoogleAdsPicker } from '@/components/google-ads-picker'
+import { MetaAdsPicker } from '@/components/meta-ads-picker'
 
 interface ChannelConnection {
   channel: ChannelId
@@ -31,6 +32,7 @@ export function ChannelConnectionsSection({ projectId, enabledChannels }: Channe
   const [connecting, setConnecting] = useState<ChannelId | null>(null)
   const [ga4PickerOpen, setGa4PickerOpen] = useState(false)
   const [googleAdsPickerOpen, setGoogleAdsPickerOpen] = useState(false)
+  const [metaAdsPickerOpen, setMetaAdsPickerOpen] = useState(false)
   const pickerAutoOpened = useRef(false)
 
   useEffect(() => {
@@ -48,6 +50,10 @@ export function ChannelConnectionsSection({ projectId, enabledChannels }: Channe
     if (params.get('connected') === 'GOOGLE_ADS' && params.get('success') === 'true') {
       pickerAutoOpened.current = true
       setGoogleAdsPickerOpen(true)
+    }
+    if (params.get('connected') === 'META_ADS' && params.get('success') === 'true') {
+      pickerAutoOpened.current = true
+      setMetaAdsPickerOpen(true)
     }
   }, [])
 
@@ -200,6 +206,22 @@ export function ChannelConnectionsSection({ projectId, enabledChannels }: Channe
                         )
                       })()
                     )}
+
+                    {isConnected && channelId === 'META_ADS' && (
+                      (() => {
+                        const needsSelection = !connection?.accountId || connection.accountId === 'pending-account-selection'
+                        return (
+                          <Button
+                            onClick={() => setMetaAdsPickerOpen(true)}
+                            size="sm"
+                            variant={needsSelection ? 'default' : 'outline'}
+                            className="cursor-pointer"
+                          >
+                            {needsSelection ? 'Select Account' : 'Change'}
+                          </Button>
+                        )
+                      })()
+                    )}
                     <Button
                       onClick={() => handleConnect(channelId)}
                       disabled={connecting === channelId}
@@ -249,6 +271,13 @@ export function ChannelConnectionsSection({ projectId, enabledChannels }: Channe
         projectId={projectId}
         open={googleAdsPickerOpen}
         onClose={() => setGoogleAdsPickerOpen(false)}
+        onSaved={fetchConnections}
+      />
+
+      <MetaAdsPicker
+        projectId={projectId}
+        open={metaAdsPickerOpen}
+        onClose={() => setMetaAdsPickerOpen(false)}
         onSaved={fetchConnections}
       />
     </Card>

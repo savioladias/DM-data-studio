@@ -441,8 +441,7 @@ export function ChannelDetail({
                 if (metric.metricType === 'info') {
                   return <MetricInfoCard key={metric.key} metric={metric} />
                 }
-
-                const isPositive = metric.trend === 'up'
+const isPositive = metric.trend === 'up'
                 const isNegative = metric.trend === 'down'
                 const chartData = generateMetricHistory(metric.value, metric.trend, metric.label)
                 const trendColor = isPositive ? '#10b981' : isNegative ? '#ef4444' : '#6b7280'

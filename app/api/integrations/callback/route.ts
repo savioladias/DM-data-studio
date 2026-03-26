@@ -49,7 +49,29 @@ export async function GET(req: NextRequest) {
     }
 
     // Exchange code for tokens
-    const tokens = await exchangeCodeForToken(platform, code)
+    let tokens = await exchangeCodeForToken(platform, code)
+
+    // For Meta platforms, exchange the short-lived token for a long-lived one (60 days)
+    if (platform === 'META_ADS' || platform === 'FACEBOOK' || platform === 'INSTAGRAM') {
+      try {
+        const appId = process.env.META_APP_ID
+        const appSecret = process.env.META_APP_SECRET
+        const shortToken = tokens.access_token
+        if (appId && appSecret && shortToken) {
+          const llRes = await fetch(
+            `https://graph.facebook.com/v18.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortToken}`
+          )
+          if (llRes.ok) {
+            const llData = await llRes.json()
+            if (llData.access_token) {
+              tokens = { ...tokens, ...llData }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Long-lived token exchange failed, using short-lived token:', e)
+      }
+    }
 
     // Determine account name and ID based on platform
     let accountName = platform
@@ -64,7 +86,7 @@ export async function GET(req: NextRequest) {
       accountId = 'pending-property-selection'
     } else if (platform === 'META_ADS') {
       accountName = 'Meta Ads Manager'
-      accountId = tokens.user_id || null
+      accountId = 'pending-account-selection'
     } else if (platform === 'GOOGLE_SEARCH_CONSOLE') {
       accountName = 'Google Search Console'
       accountId = 'pending-site-selection'

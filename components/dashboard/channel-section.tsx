@@ -216,6 +216,15 @@ export function ChannelSection({ projectId, channelId, metrics, dateRange }: Cha
                     'costPerConversion',
                   ].includes(metric.key)
                 }
+                if (channelId === 'META_ADS') {
+                  return [
+                    'results',
+                    'costPerResult',
+                    'spend',
+                    'impressions',
+                    'reach',
+                  ].includes(metric.key)
+                }
                 return true
               })
               .map(metric => (

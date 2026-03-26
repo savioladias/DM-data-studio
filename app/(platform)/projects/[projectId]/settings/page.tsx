@@ -26,6 +26,7 @@ import type { ChannelId, ChannelCategory } from '@/lib/channels'
 import { GA4PropertyPicker } from '@/components/ga4-property-picker'
 import { GSCSitePicker } from '@/components/gsc-site-picker'
 import { GoogleAdsPicker } from '@/components/google-ads-picker'
+import { MetaAdsPicker } from '@/components/meta-ads-picker'
 
 interface ChannelConnection {
   channel: ChannelId
@@ -79,6 +80,7 @@ export default function ProjectSettingsPage() {
   const [ga4PickerOpen, setGa4PickerOpen] = useState(false)
   const [googleAdsPickerOpen, setGoogleAdsPickerOpen] = useState(false)
   const [gscPickerOpen, setGscPickerOpen] = useState(false)
+  const [metaAdsPickerOpen, setMetaAdsPickerOpen] = useState(false)
   const pickerAutoOpened = useRef(false)
 
   // Auto-open pickers after OAuth redirect
@@ -91,6 +93,7 @@ export default function ProjectSettingsPage() {
       if (connected === 'GOOGLE_ANALYTICS') setGa4PickerOpen(true)
       if (connected === 'GOOGLE_ADS') setGoogleAdsPickerOpen(true)
       if (connected === 'GOOGLE_SEARCH_CONSOLE') setGscPickerOpen(true)
+      if (connected === 'META_ADS') setMetaAdsPickerOpen(true)
     }
   }, [])
 
@@ -513,6 +516,19 @@ export default function ProjectSettingsPage() {
                               </Button>
                             )
                           })()}
+                          {isConnected && channel.id === 'META_ADS' && (() => {
+                            const needsSelection = !connection?.accountId || connection.accountId === 'pending-account-selection'
+                            return (
+                              <Button
+                                onClick={() => setMetaAdsPickerOpen(true)}
+                                size="sm"
+                                variant={needsSelection ? 'default' : 'outline'}
+                                className="cursor-pointer"
+                              >
+                                {needsSelection ? 'Select Account' : 'Change'}
+                              </Button>
+                            )
+                          })()}
                           {isConnected && channel.id === 'GOOGLE_SEARCH_CONSOLE' && (() => {
                             const needsSelection = !connection?.accountId || connection.accountId === 'pending-site-selection'
                             return (
@@ -605,6 +621,16 @@ export default function ProjectSettingsPage() {
         open={gscPickerOpen}
         onClose={async () => {
           setGscPickerOpen(false)
+          const res = await fetch(`/api/projects/${projectId}`)
+          if (res.ok) parseConnections(await res.json())
+        }}
+      />
+
+      <MetaAdsPicker
+        projectId={projectId}
+        open={metaAdsPickerOpen}
+        onClose={() => setMetaAdsPickerOpen(false)}
+        onSaved={async () => {
           const res = await fetch(`/api/projects/${projectId}`)
           if (res.ok) parseConnections(await res.json())
         }}
