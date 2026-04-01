@@ -3,7 +3,7 @@
  * Fetches businesses (portfolios), ad accounts, and performance metrics
  */
 
-const GRAPH_API_VERSION = 'v18.0'
+const GRAPH_API_VERSION = 'v19.0'
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`
 
 export interface MetaAdsBusiness {

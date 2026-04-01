@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
         const shortToken = tokens.access_token
         if (appId && appSecret && shortToken) {
           const llRes = await fetch(
-            `https://graph.facebook.com/v18.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortToken}`
+            `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortToken}`
           )
           if (llRes.ok) {
             const llData = await llRes.json()

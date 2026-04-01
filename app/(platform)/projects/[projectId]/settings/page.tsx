@@ -27,6 +27,7 @@ import { GA4PropertyPicker } from '@/components/ga4-property-picker'
 import { GSCSitePicker } from '@/components/gsc-site-picker'
 import { GoogleAdsPicker } from '@/components/google-ads-picker'
 import { MetaAdsPicker } from '@/components/meta-ads-picker'
+import { MetaSocialPicker } from '@/components/meta-social-picker'
 
 interface ChannelConnection {
   channel: ChannelId
@@ -81,6 +82,8 @@ export default function ProjectSettingsPage() {
   const [googleAdsPickerOpen, setGoogleAdsPickerOpen] = useState(false)
   const [gscPickerOpen, setGscPickerOpen] = useState(false)
   const [metaAdsPickerOpen, setMetaAdsPickerOpen] = useState(false)
+  const [facebookPickerOpen, setFacebookPickerOpen] = useState(false)
+  const [instagramPickerOpen, setInstagramPickerOpen] = useState(false)
   const pickerAutoOpened = useRef(false)
 
   // Auto-open pickers after OAuth redirect
@@ -94,6 +97,8 @@ export default function ProjectSettingsPage() {
       if (connected === 'GOOGLE_ADS') setGoogleAdsPickerOpen(true)
       if (connected === 'GOOGLE_SEARCH_CONSOLE') setGscPickerOpen(true)
       if (connected === 'META_ADS') setMetaAdsPickerOpen(true)
+      if (connected === 'FACEBOOK') setFacebookPickerOpen(true)
+      if (connected === 'INSTAGRAM') setInstagramPickerOpen(true)
     }
   }, [])
 
@@ -542,6 +547,32 @@ export default function ProjectSettingsPage() {
                               </Button>
                             )
                           })()}
+                          {isConnected && channel.id === 'FACEBOOK' && (() => {
+                            const needsSelection = !connection?.accountId || connection.accountId === 'pending-page-selection'
+                            return (
+                              <Button
+                                onClick={() => setFacebookPickerOpen(true)}
+                                size="sm"
+                                variant={needsSelection ? 'default' : 'outline'}
+                                className="cursor-pointer"
+                              >
+                                {needsSelection ? 'Select Page' : 'Change'}
+                              </Button>
+                            )
+                          })()}
+                          {isConnected && channel.id === 'INSTAGRAM' && (() => {
+                            const needsSelection = !connection?.accountId || connection.accountId === 'pending-page-selection'
+                            return (
+                              <Button
+                                onClick={() => setInstagramPickerOpen(true)}
+                                size="sm"
+                                variant={needsSelection ? 'default' : 'outline'}
+                                className="cursor-pointer"
+                              >
+                                {needsSelection ? 'Select Account' : 'Change'}
+                              </Button>
+                            )
+                          })()}
                           <Button
                             onClick={() => handleConnect(channel.id as ChannelId)}
                             disabled={connecting === channel.id}
@@ -630,6 +661,28 @@ export default function ProjectSettingsPage() {
         projectId={projectId}
         open={metaAdsPickerOpen}
         onClose={() => setMetaAdsPickerOpen(false)}
+        onSaved={async () => {
+          const res = await fetch(`/api/projects/${projectId}`)
+          if (res.ok) parseConnections(await res.json())
+        }}
+      />
+
+      <MetaSocialPicker
+        projectId={projectId}
+        channel="FACEBOOK"
+        open={facebookPickerOpen}
+        onClose={() => setFacebookPickerOpen(false)}
+        onSaved={async () => {
+          const res = await fetch(`/api/projects/${projectId}`)
+          if (res.ok) parseConnections(await res.json())
+        }}
+      />
+
+      <MetaSocialPicker
+        projectId={projectId}
+        channel="INSTAGRAM"
+        open={instagramPickerOpen}
+        onClose={() => setInstagramPickerOpen(false)}
         onSaved={async () => {
           const res = await fetch(`/api/projects/${projectId}`)
           if (res.ok) parseConnections(await res.json())

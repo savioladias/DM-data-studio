@@ -6,8 +6,8 @@ import { fetchGA4Metrics, fetchGA4RealtimeMetrics } from '@/lib/integrations/goo
 import { fetchGSCMetrics, fetchAllGSCMetrics, fetchGSCDimensional, fetchGSCTrafficSources } from '@/lib/integrations/google/search-console'
 import { fetchGoogleAdsMetrics, fetchGoogleAdsAgeRanges, fetchGoogleAdsGenders, fetchGoogleAdsNetworks, fetchGoogleAdsKeywords } from '@/lib/integrations/google/ads'
 import { fetchLinkedInMetrics } from '@/lib/integrations/linkedin/organic'
-import { fetchFacebookMetrics } from '@/lib/integrations/facebook/organic'
-import { fetchInstagramMetrics } from '@/lib/integrations/instagram/organic'
+import { fetchFacebookOrganicMetrics } from '@/lib/integrations/facebook/organic'
+import { fetchInstagramOrganicMetrics } from '@/lib/integrations/instagram/organic'
 import { fetchYouTubeMetrics } from '@/lib/integrations/youtube/analytics'
 import { fetchMetaAdsAccountMetrics, fetchMetaAdsCampaigns, fetchMetaAdsAdSets, fetchMetaAdsAds } from '@/lib/integrations/meta/ads'
 import { ensureValidAccessToken } from '@/lib/integrations/auth'
@@ -256,7 +256,13 @@ async function fetchMetricsForChannel(
     }
 
     // Use valid access token (refreshed if needed)
-    const accessToken = await ensureValidAccessToken(credential)
+    let accessToken = await ensureValidAccessToken(credential)
+    
+    // Fallback to system user token if provided in .env
+    if (!accessToken && process.env.META_SYSTEM_USER_TOKEN && 
+        (channel === 'FACEBOOK' || channel === 'INSTAGRAM' || channel === 'META_ADS')) {
+      accessToken = process.env.META_SYSTEM_USER_TOKEN
+    }
 
     if (!accessToken) {
       return []
@@ -717,111 +723,84 @@ async function fetchMetricsForChannel(
     // Fetch Facebook Organic data
     if (channel === 'FACEBOOK') {
       if (!credential.accountId || credential.accountId === 'pending-page-selection') {
-        return [] // Return empty array instead of mock data
+        return []
       }
 
-      const facebookData = await fetchFacebookMetrics({
-        accessToken,
-        pageId: credential.accountId,
+      const daysDiff = Math.max(
+        1,
+        Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+      )
+      const prevEnd = new Date(startDate)
+      prevEnd.setDate(prevEnd.getDate() - 1)
+      const prevStart = new Date(prevEnd)
+      prevStart.setDate(prevStart.getDate() - daysDiff)
+      const prevStartStr = prevStart.toISOString().split('T')[0]
+      const prevEndStr = prevEnd.toISOString().split('T')[0]
+
+      const [current, previous] = await Promise.all([
+        fetchFacebookOrganicMetrics({ accessToken, pageId: credential.accountId, startDate, endDate }),
+        fetchFacebookOrganicMetrics({ accessToken, pageId: credential.accountId, startDate: prevStartStr, endDate: prevEndStr }),
+      ])
+
+      const mk = (key: string, label: string, value: number, prev: number, unit = '') => ({
+        key, label, value, previous: prev, unit,
+        deltaPercent: calculateDelta(value, prev),
+        trend: calculateTrend(value, prev),
       })
 
       return [
-        {
-          key: 'followers',
-          label: 'Page Likes',
-          value: facebookData.followers,
-          previous: Math.round(facebookData.followers * 0.98),
-          unit: '',
-          deltaPercent: calculateDelta(facebookData.followers, Math.round(facebookData.followers * 0.98)),
-          trend: calculateTrend(facebookData.followers, Math.round(facebookData.followers * 0.98)),
-        },
-        {
-          key: 'reach',
-          label: 'Reach',
-          value: facebookData.reach,
-          previous: Math.round(facebookData.reach * 0.92),
-          unit: '',
-          deltaPercent: calculateDelta(facebookData.reach, Math.round(facebookData.reach * 0.92)),
-          trend: calculateTrend(facebookData.reach, Math.round(facebookData.reach * 0.92)),
-        },
-        {
-          key: 'engagement',
-          label: 'Engagement',
-          value: facebookData.engagement,
-          previous: Math.round(facebookData.engagement * 0.88),
-          unit: '',
-          deltaPercent: calculateDelta(facebookData.engagement, Math.round(facebookData.engagement * 0.88)),
-          trend: calculateTrend(facebookData.engagement, Math.round(facebookData.engagement * 0.88)),
-        },
-        {
-          key: 'engagementRate',
-          label: 'Engagement Rate',
-          value: parseFloat(facebookData.engagementRate.toFixed(2)),
-          previous: parseFloat((facebookData.engagementRate * 0.9).toFixed(2)),
-          unit: '%',
-          deltaPercent: calculateDelta(parseFloat(facebookData.engagementRate.toFixed(2)), parseFloat((facebookData.engagementRate * 0.9).toFixed(2))),
-          trend: calculateTrend(parseFloat(facebookData.engagementRate.toFixed(2)), parseFloat((facebookData.engagementRate * 0.9).toFixed(2))),
-        },
+        mk('views', 'Views', current.views, previous.views),
+        mk('viewers', 'Viewers', current.viewers, previous.viewers),
+        mk('contentInteractions', 'Content Interactions', current.contentInteractions, previous.contentInteractions),
+        mk('linkClicks', 'Link Clicks', current.linkClicks, previous.linkClicks),
+        mk('visits', 'Page Visits', current.visits, previous.visits),
+        mk('follows', 'New Follows', current.follows, previous.follows),
+        mk('reach', 'Reach', current.reach, previous.reach),
+        mk('reactions', 'Likes & Reactions', current.reactions, previous.reactions),
+        mk('comments', 'Comments', current.comments, previous.comments),
+        mk('shares', 'Shares', current.shares, previous.shares),
       ]
     }
 
     // Fetch Instagram Organic data
     if (channel === 'INSTAGRAM') {
       if (!credential.accountId || credential.accountId === 'pending-page-selection') {
-        return [] // Return empty array instead of mock data
+        return []
       }
 
-      const instagramData = await fetchInstagramMetrics({
-        accessToken,
-        businessAccountId: credential.accountId,
+      const daysDiff = Math.max(
+        1,
+        Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+      )
+      const prevEnd = new Date(startDate)
+      prevEnd.setDate(prevEnd.getDate() - 1)
+      const prevStart = new Date(prevEnd)
+      prevStart.setDate(prevStart.getDate() - daysDiff)
+      const prevStartStr = prevStart.toISOString().split('T')[0]
+      const prevEndStr = prevEnd.toISOString().split('T')[0]
+
+      const [current, previous] = await Promise.all([
+        fetchInstagramOrganicMetrics({ accessToken, businessAccountId: credential.accountId, startDate, endDate }),
+        fetchInstagramOrganicMetrics({ accessToken, businessAccountId: credential.accountId, startDate: prevStartStr, endDate: prevEndStr }),
+      ])
+
+      const mk = (key: string, label: string, value: number, prev: number, unit = '') => ({
+        key, label, value, previous: prev, unit,
+        deltaPercent: calculateDelta(value, prev),
+        trend: calculateTrend(value, prev),
       })
 
       return [
-        {
-          key: 'followers',
-          label: 'Followers',
-          value: instagramData.followers,
-          previous: Math.round(instagramData.followers * 0.98),
-          unit: '',
-          deltaPercent: calculateDelta(instagramData.followers, Math.round(instagramData.followers * 0.98)),
-          trend: calculateTrend(instagramData.followers, Math.round(instagramData.followers * 0.98)),
-        },
-        {
-          key: 'reach',
-          label: 'Reach',
-          value: instagramData.reach,
-          previous: Math.round(instagramData.reach * 0.92),
-          unit: '',
-          deltaPercent: calculateDelta(instagramData.reach, Math.round(instagramData.reach * 0.92)),
-          trend: calculateTrend(instagramData.reach, Math.round(instagramData.reach * 0.92)),
-        },
-        {
-          key: 'impressions',
-          label: 'Impressions',
-          value: instagramData.impressions,
-          previous: Math.round(instagramData.impressions * 0.88),
-          unit: '',
-          deltaPercent: calculateDelta(instagramData.impressions, Math.round(instagramData.impressions * 0.88)),
-          trend: calculateTrend(instagramData.impressions, Math.round(instagramData.impressions * 0.88)),
-        },
-        {
-          key: 'engagement',
-          label: 'Engagement',
-          value: instagramData.engagement,
-          previous: Math.round(instagramData.engagement * 0.85),
-          unit: '',
-          deltaPercent: calculateDelta(instagramData.engagement, Math.round(instagramData.engagement * 0.85)),
-          trend: calculateTrend(instagramData.engagement, Math.round(instagramData.engagement * 0.85)),
-        },
-        {
-          key: 'engagementRate',
-          label: 'Engagement Rate',
-          value: parseFloat(instagramData.engagementRate.toFixed(2)),
-          previous: parseFloat((instagramData.engagementRate * 0.9).toFixed(2)),
-          unit: '%',
-          deltaPercent: calculateDelta(parseFloat(instagramData.engagementRate.toFixed(2)), parseFloat((instagramData.engagementRate * 0.9).toFixed(2))),
-          trend: calculateTrend(parseFloat(instagramData.engagementRate.toFixed(2)), parseFloat((instagramData.engagementRate * 0.9).toFixed(2))),
-        },
+        mk('views', 'Views', current.views, previous.views),
+        mk('viewers', 'Viewers', current.viewers, previous.viewers),
+        mk('contentInteractions', 'Content Interactions', current.contentInteractions, previous.contentInteractions),
+        mk('linkClicks', 'Link Clicks', current.linkClicks, previous.linkClicks),
+        mk('visits', 'Profile Visits', current.visits, previous.visits),
+        mk('follows', 'New Follows', current.follows, previous.follows),
+        mk('reach', 'Reach', current.reach, previous.reach),
+        mk('reactions', 'Likes & Reactions', current.reactions, previous.reactions),
+        mk('comments', 'Comments', current.comments, previous.comments),
+        mk('shares', 'Shares', current.shares, previous.shares),
       ]
     }
 

@@ -85,10 +85,12 @@ function getAllOAuthConfigs(): Record<string, OAuthConfig> {
       clientId: process.env.META_APP_ID || '',
       clientSecret: process.env.META_APP_SECRET || '',
       redirectUri: baseRedirectUri,
-      authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
-      tokenUrl: 'https://graph.instagram.com/v18.0/oauth/access_token',
+      authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
+      tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
       scopes: [
         'pages_read_engagement',
+        'pages_show_list',
+        'business_management',
       ],
     },
     INSTAGRAM: {
@@ -96,10 +98,12 @@ function getAllOAuthConfigs(): Record<string, OAuthConfig> {
       clientId: process.env.META_APP_ID || '',
       clientSecret: process.env.META_APP_SECRET || '',
       redirectUri: baseRedirectUri,
-      authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
-      tokenUrl: 'https://graph.instagram.com/v18.0/oauth/access_token',
+      authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
+      tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
       scopes: [
         'pages_read_engagement',
+        'pages_show_list',
+        'business_management',
       ],
     },
     YOUTUBE: {
