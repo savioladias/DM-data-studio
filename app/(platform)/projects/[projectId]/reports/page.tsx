@@ -86,7 +86,7 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
   const [generatingConclusionsAI, setGeneratingConclusionsAI] = useState(false)
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
   const [customChannels, setCustomChannels] = useState<ChannelId[]>([])
-  const [customMetrics, setCustomMetrics] = useState<Record<ChannelId, string[]>>({})
+  const [customMetrics, setCustomMetrics] = useState<Record<string, string[]>>({})
 
   useEffect(() => {
     const fetchData = async () => {
@@ -209,7 +209,7 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
 
   const openDownloadDialog = () => {
     setCustomChannels(selectedChannels)
-    const metricMap: Record<ChannelId, string[]> = {}
+    const metricMap: Record<string, string[]> = {}
     selectedChannels.forEach(ch => {
       const channel = metrics.find(m => m.channel === ch)
       if (channel) {
@@ -230,7 +230,7 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
 
   const toggleCustomMetric = (channelId: ChannelId, metricKey: string) => {
     setCustomMetrics(prev => {
-      const current = prev[channelId] || []
+      const current = (prev as Record<string, string[]>)[channelId] || []
       return {
         ...prev,
         [channelId]: current.includes(metricKey)
@@ -240,7 +240,7 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
     })
   }
 
-  const exportAsPDF = async (channelIds?: ChannelId[], metricsMap?: Record<ChannelId, string[]>) => {
+  const exportAsPDF = async (channelIds?: ChannelId[], metricsMap?: Record<string, string[]>) => {
     const exportChannels = channelIds || selectedChannels
     const exportMetricsMap = metricsMap || {}
 
