@@ -1040,27 +1040,47 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                       <div className="pt-4 border-t">
                         <div className="flex items-center justify-between mb-3">
                           <p className="text-sm font-semibold">{channel.label} Analysis & Summary</p>
-                          {savedSummaries[channel.channel] && editingChannel !== channel.channel && (
-                            <Button
-                              onClick={() => {
-                                setEditingChannel(channel.channel)
-                                setChannelSummaries(prev => ({
-                                  ...prev,
-                                  [channel.channel]: savedSummaries[channel.channel]
-                                }))
-                              }}
-                              variant="outline"
-                              size="sm"
-                              className="text-xs"
-                            >
-                              Edit
-                            </Button>
-                          )}
+                          <div className="flex gap-2">
+                            {channelSummaries[channel.channel] && !savedSummaries[channel.channel] && editingChannel !== channel.channel && (
+                              <Button
+                                onClick={async () => {
+                                  setSavedSummaries(prev => ({ ...prev, [channel.channel]: channelSummaries[channel.channel] }))
+                                  await fetch(`/api/projects/${projectId}/report-summaries`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ type: 'channel_summary', channel: channel.channel, body: channelSummaries[channel.channel] }),
+                                  })
+                                  toast.success('Summary saved')
+                                }}
+                                size="sm"
+                                className="text-xs"
+                              >
+                                Save Summary
+                              </Button>
+                            )}
+                            {savedSummaries[channel.channel] && editingChannel !== channel.channel && (
+                              <Button
+                                onClick={() => {
+                                  setEditingChannel(channel.channel)
+                                  setChannelSummaries(prev => ({ ...prev, [channel.channel]: savedSummaries[channel.channel] }))
+                                }}
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                              >
+                                Edit
+                              </Button>
+                            )}
+                          </div>
                         </div>
 
                         {savedSummaries[channel.channel] && editingChannel !== channel.channel ? (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap dark:bg-blue-950/30 dark:border-blue-800 dark:text-gray-300">
                             {savedSummaries[channel.channel]}
+                          </div>
+                        ) : channelSummaries[channel.channel] && editingChannel !== channel.channel ? (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap dark:bg-blue-950/30 dark:border-blue-800 dark:text-gray-300">
+                            {channelSummaries[channel.channel]}
                           </div>
                         ) : (
                           <div className="space-y-3">
