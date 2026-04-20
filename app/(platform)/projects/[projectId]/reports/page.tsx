@@ -109,6 +109,32 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
         const projData = await projectRes.json()
         setProjectData(projData)
 
+        // Load saved summaries
+        const summariesRes = await fetch(`/api/projects/${projectId}/report-summaries`)
+        if (summariesRes.ok) {
+          const { summaries } = await summariesRes.json()
+          if (summaries.executive_summary) {
+            setSavedExecutiveSummary(summaries.executive_summary)
+            setExecutiveSummary(summaries.executive_summary)
+          }
+          if (summaries.conclusions) {
+            setSavedConclusions(summaries.conclusions)
+            setConclusions(summaries.conclusions)
+          }
+          // Load channel summaries
+          const channelMap: Record<string, string> = {}
+          const savedMap: Record<string, string> = {}
+          for (const [key, value] of Object.entries(summaries)) {
+            if (key.startsWith('channel_')) {
+              const channelId = key.replace('channel_', '')
+              channelMap[channelId] = value as string
+              savedMap[channelId] = value as string
+            }
+          }
+          setChannelSummaries(channelMap)
+          setSavedSummaries(savedMap)
+        }
+
         // Set default date range (last 30 days)
         const end = new Date()
         const start = new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000)
@@ -782,9 +808,14 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                   />
                   <div className="flex gap-2">
                     <Button
-                      onClick={() => {
+                      onClick={async () => {
                         setSavedExecutiveSummary(executiveSummary)
                         setEditingExecutive(false)
+                        await fetch(`/api/projects/${projectId}/report-summaries`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ type: 'executive_summary', body: executiveSummary }),
+                        })
                         toast.success('Executive summary saved')
                       }}
                       size="sm"
@@ -1009,27 +1040,47 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                       <div className="pt-4 border-t">
                         <div className="flex items-center justify-between mb-3">
                           <p className="text-sm font-semibold">{channel.label} Analysis & Summary</p>
-                          {savedSummaries[channel.channel] && editingChannel !== channel.channel && (
-                            <Button
-                              onClick={() => {
-                                setEditingChannel(channel.channel)
-                                setChannelSummaries(prev => ({
-                                  ...prev,
-                                  [channel.channel]: savedSummaries[channel.channel]
-                                }))
-                              }}
-                              variant="outline"
-                              size="sm"
-                              className="text-xs"
-                            >
-                              Edit
-                            </Button>
-                          )}
+                          <div className="flex gap-2">
+                            {channelSummaries[channel.channel] && !savedSummaries[channel.channel] && editingChannel !== channel.channel && (
+                              <Button
+                                onClick={async () => {
+                                  setSavedSummaries(prev => ({ ...prev, [channel.channel]: channelSummaries[channel.channel] }))
+                                  await fetch(`/api/projects/${projectId}/report-summaries`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ type: 'channel_summary', channel: channel.channel, body: channelSummaries[channel.channel] }),
+                                  })
+                                  toast.success('Summary saved')
+                                }}
+                                size="sm"
+                                className="text-xs"
+                              >
+                                Save Summary
+                              </Button>
+                            )}
+                            {savedSummaries[channel.channel] && editingChannel !== channel.channel && (
+                              <Button
+                                onClick={() => {
+                                  setEditingChannel(channel.channel)
+                                  setChannelSummaries(prev => ({ ...prev, [channel.channel]: savedSummaries[channel.channel] }))
+                                }}
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                              >
+                                Edit
+                              </Button>
+                            )}
+                          </div>
                         </div>
 
                         {savedSummaries[channel.channel] && editingChannel !== channel.channel ? (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap dark:bg-blue-950/30 dark:border-blue-800 dark:text-gray-300">
                             {savedSummaries[channel.channel]}
+                          </div>
+                        ) : channelSummaries[channel.channel] && editingChannel !== channel.channel ? (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap dark:bg-blue-950/30 dark:border-blue-800 dark:text-gray-300">
+                            {channelSummaries[channel.channel]}
                           </div>
                         ) : (
                           <div className="space-y-3">
@@ -1041,12 +1092,17 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                             />
                             <div className="flex gap-2">
                               <Button
-                                onClick={() => {
+                                onClick={async () => {
                                   setSavedSummaries(prev => ({
                                     ...prev,
                                     [channel.channel]: channelSummaries[channel.channel]
                                   }))
                                   setEditingChannel(null)
+                                  await fetch(`/api/projects/${projectId}/report-summaries`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ type: 'channel_summary', channel: channel.channel, body: channelSummaries[channel.channel] }),
+                                  })
                                   toast.success('Summary saved')
                                 }}
                                 size="sm"
@@ -1160,9 +1216,14 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                   />
                   <div className="flex gap-2">
                     <Button
-                      onClick={() => {
+                      onClick={async () => {
                         setSavedConclusions(conclusions)
                         setEditingConclusions(false)
+                        await fetch(`/api/projects/${projectId}/report-summaries`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ type: 'conclusions', body: conclusions }),
+                        })
                         toast.success('Conclusions saved')
                       }}
                       size="sm"

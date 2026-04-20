@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { ProjectCard } from '@/components/platform/project-card'
 import { Button } from '@/components/ui/button'
 import { Plus, BarChart3 } from 'lucide-react'
+import { UserMenu } from '@/components/platform/user-menu'
 
 export default async function ProjectsHomePage() {
   const session = await auth()
@@ -38,12 +39,15 @@ export default async function ProjectsHomePage() {
                 : `${projects.length} project${projects.length !== 1 ? 's' : ''}`}
             </p>
           </div>
-          <Button asChild>
-            <Link href="/projects/new">
-              <Plus className="mr-2 h-4 w-4" />
-              New Project
-            </Link>
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button asChild>
+              <Link href="/projects/new">
+                <Plus className="mr-2 h-4 w-4" />
+                New Project
+              </Link>
+            </Button>
+            <UserMenu user={{ name: session.user.name, email: session.user.email }} />
+          </div>
         </div>
       </div>
 

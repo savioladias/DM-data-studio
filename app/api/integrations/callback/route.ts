@@ -5,7 +5,7 @@
  */
 
 import { db } from '@/lib/db'
-import { exchangeCodeForToken, refreshAccessToken } from '@/lib/integrations/auth'
+import { exchangeCodeForToken } from '@/lib/integrations/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(req: NextRequest) {
@@ -49,7 +49,29 @@ export async function GET(req: NextRequest) {
     }
 
     // Exchange code for tokens
-    const tokens = await exchangeCodeForToken(platform, code)
+    let tokens = await exchangeCodeForToken(platform, code)
+
+    // For Meta platforms, exchange the short-lived token for a long-lived one (60 days)
+    if (platform === 'META_ADS' || platform === 'FACEBOOK' || platform === 'INSTAGRAM') {
+      try {
+        const appId = process.env.META_APP_ID
+        const appSecret = process.env.META_APP_SECRET
+        const shortToken = tokens.access_token
+        if (appId && appSecret && shortToken) {
+          const llRes = await fetch(
+            `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortToken}`
+          )
+          if (llRes.ok) {
+            const llData = await llRes.json()
+            if (llData.access_token) {
+              tokens = { ...tokens, ...llData }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Long-lived token exchange failed, using short-lived token:', e)
+      }
+    }
 
     // Determine account name and ID based on platform
     let accountName = platform
@@ -64,7 +86,7 @@ export async function GET(req: NextRequest) {
       accountId = 'pending-property-selection'
     } else if (platform === 'META_ADS') {
       accountName = 'Meta Ads Manager'
-      accountId = tokens.user_id || null
+      accountId = 'pending-account-selection'
     } else if (platform === 'GOOGLE_SEARCH_CONSOLE') {
       accountName = 'Google Search Console'
       accountId = 'pending-site-selection'
@@ -80,12 +102,35 @@ export async function GET(req: NextRequest) {
     } else if (platform === 'YOUTUBE') {
       accountName = 'YouTube Channel'
       accountId = 'pending-channel-selection'
+    } else if (platform === 'GOOGLE_ADS') {
+      accountName = 'Google Ads Account'
+      accountId = 'pending-account-selection'
     }
 
     // Calculate token expiration
     const expiresAt = tokens.expires_in
       ? new Date(Date.now() + tokens.expires_in * 1000)
       : null
+
+    // Check if credential already exists (reconnect case)
+    const existing = await db.projectCredential.findUnique({
+      where: { projectId_channel: { projectId: state, channel: platform } },
+    })
+
+    // On reconnect, preserve the existing accountId/accountName so the user
+    // doesn't lose their previously selected property/page/etc.
+    const updateAccountId = existing?.accountId && existing.accountId !== 'pending-property-selection'
+      && existing.accountId !== 'pending-site-selection'
+      && existing.accountId !== 'pending-org-selection'
+      && existing.accountId !== 'pending-page-selection'
+      && existing.accountId !== 'pending-channel-selection'
+      && existing.accountId !== 'pending-account-selection'
+      ? existing.accountId
+      : accountId
+
+    const updateAccountName = existing?.accountName && existing.accountName !== platform
+      ? existing.accountName
+      : accountName
 
     // Save or update credential
     await db.projectCredential.upsert({
@@ -113,8 +158,8 @@ export async function GET(req: NextRequest) {
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token || null,
         expiresAt,
-        accountId,
-        accountName,
+        accountId: updateAccountId,
+        accountName: updateAccountName,
         metadata: JSON.stringify({
           tokenType: tokens.token_type || 'Bearer',
           scope: tokens.scope || '',

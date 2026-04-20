@@ -51,6 +51,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id as string
+        // Fetch isAdmin status from database
+        const dbUser = await db.user.findUnique({
+          where: { id: token.id as string },
+          select: { isAdmin: true }
+        })
+        if (dbUser) {
+          (session.user as any).isAdmin = dbUser.isAdmin
+        }
       }
       return session
     },

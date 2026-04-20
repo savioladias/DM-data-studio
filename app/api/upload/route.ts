@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
+import { supabaseAdmin } from '@/lib/supabase'
 import { parse } from 'path'
 
 export async function POST(request: Request) {
@@ -31,22 +30,31 @@ export async function POST(request: Request) {
     // Create unique filename with timestamp
     const timestamp = Date.now()
     const { ext } = parse(file.name)
-    const filename = `${timestamp}${ext}`
+    const filename = `${session.user.id}/${timestamp}${ext}`
 
-    // Convert file to buffer and save
+    // Convert file to buffer
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    // Ensure uploads directory exists
-    const uploadsDir = join(process.cwd(), 'public', 'uploads')
-    await mkdir(uploadsDir, { recursive: true })
+    // Upload to Supabase Storage
+    const { data, error } = await supabaseAdmin.storage
+      .from('project-assets')
+      .upload(filename, buffer, {
+        contentType: file.type,
+        upsert: false,
+      })
 
-    // Write file
-    const filepath = join(uploadsDir, filename)
-    await writeFile(filepath, buffer)
+    if (error) {
+      console.error('Supabase upload error:', error)
+      return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+    }
 
-    // Return URL
-    return NextResponse.json({ url: `/uploads/${filename}` })
+    // Get public URL
+    const { data: urlData } = supabaseAdmin.storage
+      .from('project-assets')
+      .getPublicUrl(filename)
+
+    return NextResponse.json({ url: urlData.publicUrl })
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
     console.error('Upload error:', errorMsg)

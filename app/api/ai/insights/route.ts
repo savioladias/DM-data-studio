@@ -6,7 +6,7 @@ import { z } from 'zod'
 
 const insightSchema = z.object({
   projectId: z.string(),
-  type: z.enum(['metric', 'channel', 'recommendations', 'executive_summary', 'conclusions']),
+  type: z.enum(['metric', 'channel', 'channel_analysis', 'recommendations', 'executive_summary', 'conclusions']),
   channel: z.string().optional(),
   metricKey: z.string().optional(),
   data: z.any(),
@@ -18,33 +18,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Ollama runs locally, no API key needed
-  // Verify Ollama is running by checking the API endpoint
-  const ollamaUrl = process.env.OLLAMA_API_URL || 'http://localhost:11434/api/generate'
-  try {
-    const healthCheck = await fetch(ollamaUrl.replace('/api/generate', '/api/tags'), {
-      method: 'GET',
-      timeout: 2000,
-    })
-    if (!healthCheck.ok) {
-      return NextResponse.json(
-        { error: 'Ollama is not running. Please start Ollama: https://ollama.ai' },
-        { status: 503 }
-      )
-    }
-  } catch {
-    return NextResponse.json(
-      { error: 'Ollama is not running. Please start Ollama: https://ollama.ai' },
-      { status: 503 }
-    )
-  }
+  // Claude API key is optional - will return a placeholder message if not set
 
   try {
     const body = await request.json()
     const { projectId, type, channel, metricKey, data } = insightSchema.parse(body)
 
     const project = await db.project.findFirst({
-      where: { id: projectId, userId: session.user.id },
+      where: {
+        id: projectId,
+        OR: [
+          { userId: session.user.id },
+          { projectUsers: { some: { userId: session.user.id } } },
+        ],
+      },
     })
 
     if (!project) {
@@ -55,12 +42,25 @@ export async function POST(request: Request) {
 
     if (type === 'metric' && data) {
       insightText = await generateMetricInsight(data)
-    } else if (type === 'channel' && data) {
-      // Check if this is a question-based query (has question field)
+    } else if ((type === 'channel' || type === 'channel_analysis') && data) {
       if (data.question) {
         insightText = await generateAnswerToQuestion(project.name, data)
       } else {
-        insightText = await generateChannelSummary({ ...data, projectName: project.name })
+        // Normalize metrics shape — channel_analysis uses different field names
+        const normalizedData = {
+          ...data,
+          metrics: (data.metrics || []).map((m: any) => ({
+            metricName: m.metricName || m.name || m.label,
+            currentValue: m.currentValue ?? m.value,
+            previousValue: m.previousValue,
+            deltaPercent: m.deltaPercent ?? m.changePercent,
+            channel: m.channel || data.channel,
+            unit: m.unit,
+            trend: m.trend,
+          })),
+          dateRange: data.dateRange || 'current period',
+        }
+        insightText = await generateChannelSummary({ ...normalizedData, projectName: project.name })
       }
     } else if (type === 'recommendations' && data) {
       const recommendations = await generateRecommendations(project.name, data)

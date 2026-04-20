@@ -1,36 +1,19 @@
-// Ollama API endpoint (local, runs on your machine)
-const OLLAMA_API = process.env.OLLAMA_API_URL || 'http://localhost:11434/api/generate'
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'mistral'
+import Anthropic from '@anthropic-ai/sdk'
 
-async function callOllama(prompt: string, maxTokens: number = 500): Promise<string> {
-  try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-haiku-4-5'
 
-    const response = await fetch(OLLAMA_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: OLLAMA_MODEL,
-        prompt,
-        stream: false,
-        num_predict: maxTokens,
-      }),
-      signal: controller.signal,
-    })
-
-    clearTimeout(timeoutId)
-
-    if (!response.ok) {
-      throw new Error(`Ollama API error: ${response.statusText}`)
-    }
-
-    const data = await response.json()
-    return data.response || ''
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Ollama API error: ${msg}`)
+async function callClaude(prompt: string, maxTokens: number = 500): Promise<string> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return 'AI generation is not configured. Please add your ANTHROPIC_API_KEY to .env.'
   }
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const message = await anthropic.messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: maxTokens,
+    messages: [{ role: 'user', content: prompt }],
+  })
+  const block = message.content[0]
+  return block.type === 'text' ? block.text : ''
 }
 
 export interface MetricContext {
@@ -83,7 +66,7 @@ Trend: ${metric.trend || 'unknown'}
 
 Be specific, direct, and actionable. No fluff. Start with the most important observation.`
 
-    return await callOllama(prompt, 150)
+    return await callClaude(prompt, 150)
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     throw new Error(`${msg}`)
@@ -109,7 +92,7 @@ Write a 3-4 sentence summary covering: overall performance, the standout positiv
 
 End with a brief 'Recommended Next Steps:' section listing 2-3 specific, actionable recommendations based on this data.`
 
-    return await callOllama(prompt, 500)
+    return await callClaude(prompt, 500)
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     throw new Error(`${msg}`)
@@ -137,7 +120,7 @@ User Question: ${data.question}
 
 Provide a concise, data-driven answer (2-4 sentences). Reference specific metrics from the data above when relevant. Be direct and actionable.`
 
-    return await callOllama(prompt, 300)
+    return await callClaude(prompt, 300)
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     throw new Error(`${msg}`)
@@ -176,7 +159,7 @@ Return ONLY valid JSON array:
 No markdown, no extra text, just the JSON array.`
 
     try {
-      const text = await callOllama(prompt, 800)
+      const text = await callClaude(prompt, 800)
       return JSON.parse(text) as Recommendation[]
     } catch {
       return []
@@ -211,7 +194,7 @@ Write a 3-4 sentence executive summary that:
 
 Be professional, data-driven, and concise. Focus on what matters most to the client.`
 
-    return await callOllama(prompt, 400)
+    return await callClaude(prompt, 400)
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     throw new Error(`${msg}`)
@@ -242,7 +225,7 @@ Write conclusions and recommendations that:
 
 Be strategic, specific, and actionable. Reference metrics when relevant.`
 
-    return await callOllama(prompt, 600)
+    return await callClaude(prompt, 600)
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     throw new Error(`${msg}`)

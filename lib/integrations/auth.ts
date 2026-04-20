@@ -4,6 +4,7 @@
  */
 
 import type { ChannelId } from '@/lib/channels'
+import { db } from '@/lib/db'
 
 export interface OAuthConfig {
   platform: ChannelId
@@ -50,10 +51,11 @@ function getAllOAuthConfigs(): Record<string, OAuthConfig> {
       clientSecret: process.env.META_APP_SECRET || '',
       redirectUri: baseRedirectUri,
       authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
-      tokenUrl: 'https://graph.instagram.com/v18.0/oauth/access_token',
+      tokenUrl: 'https://graph.facebook.com/v18.0/oauth/access_token',
       scopes: [
         'ads_management',
-        'business_basic',
+        'ads_read',
+        'business_management',
       ],
     },
     GOOGLE_SEARCH_CONSOLE: {
@@ -83,10 +85,12 @@ function getAllOAuthConfigs(): Record<string, OAuthConfig> {
       clientId: process.env.META_APP_ID || '',
       clientSecret: process.env.META_APP_SECRET || '',
       redirectUri: baseRedirectUri,
-      authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
-      tokenUrl: 'https://graph.instagram.com/v18.0/oauth/access_token',
+      authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
+      tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
       scopes: [
         'pages_read_engagement',
+        'pages_show_list',
+        'business_management',
       ],
     },
     INSTAGRAM: {
@@ -94,10 +98,12 @@ function getAllOAuthConfigs(): Record<string, OAuthConfig> {
       clientId: process.env.META_APP_ID || '',
       clientSecret: process.env.META_APP_SECRET || '',
       redirectUri: baseRedirectUri,
-      authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
-      tokenUrl: 'https://graph.instagram.com/v18.0/oauth/access_token',
+      authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
+      tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
       scopes: [
         'pages_read_engagement',
+        'pages_show_list',
+        'business_management',
       ],
     },
     YOUTUBE: {
@@ -139,13 +145,16 @@ export function getAuthorizationUrl(platform: string, projectId: string): string
   const state = JSON.stringify({ platform, projectId })
   const stateEncoded = Buffer.from(state).toString('base64')
 
+  const isGoogle = config.authUrl.includes('accounts.google.com')
+
   const params = new URLSearchParams({
     client_id: config.clientId,
     redirect_uri: config.redirectUri,
     response_type: 'code',
     scope: config.scopes.join(' '),
     state: stateEncoded,
-    access_type: 'offline', // Get refresh token
+    access_type: 'offline',
+    ...(isGoogle ? { prompt: 'consent' } : {}), // Always return refresh token for Google
   })
 
   return `${config.authUrl}?${params.toString()}`
@@ -208,4 +217,54 @@ export async function refreshAccessToken(platform: string, refreshToken: string)
   }
 
   return response.json()
+}
+
+/**
+ * Ensure an access token is valid, refreshing it if necessary.
+ * Updates the database with new tokens if refreshed.
+ */
+export async function ensureValidAccessToken(credential: {
+  id: string
+  channel: string
+  accessToken: string | null
+  refreshToken: string | null
+  expiresAt: Date | null
+}): Promise<string | null> {
+  if (!credential.accessToken) return null
+
+  const now = new Date()
+  
+  // Refresh if expired or expiring within 5 minutes
+  const isNearlyExpired = credential.expiresAt 
+    ? now.getTime() + (5 * 60 * 1000) >= credential.expiresAt.getTime()
+    : true
+
+  if (isNearlyExpired && credential.refreshToken) {
+    try {
+      console.log(`Refreshing access token for ${credential.channel}...`)
+      const data = await refreshAccessToken(credential.channel, credential.refreshToken)
+      
+      const updated = await db.projectCredential.update({
+        where: { id: credential.id },
+        data: {
+          accessToken: data.access_token,
+          refreshToken: data.refresh_token || credential.refreshToken,
+          expiresAt: data.expires_in 
+            ? new Date(Date.now() + data.expires_in * 1000)
+            : null
+        }
+      })
+      
+      return updated.accessToken
+    } catch (error) {
+      console.error(`Token refresh failed for ${credential.channel}:`, error)
+      // If refresh fails but token isn't definitely expired yet, try one last time with existing token
+      if (credential.expiresAt && now < credential.expiresAt) {
+        return credential.accessToken
+      }
+      throw error
+    }
+  }
+
+  return credential.accessToken
 }

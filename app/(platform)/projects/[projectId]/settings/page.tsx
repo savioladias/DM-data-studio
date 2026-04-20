@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,14 +16,25 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Settings2, Upload, Loader2, Trash2, AlertTriangle } from 'lucide-react'
+import { Settings2, Upload, Loader2, Trash2, AlertTriangle, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { ProjectAvatar } from '@/components/project-avatar'
-import { ChannelConnectionsSection } from '@/components/settings/channel-connections-section'
-import { ScheduledReportsSection } from '@/components/settings/scheduled-reports-section'
+import { ProjectTeamSection } from '@/components/settings/project-team-section'
 import { INDUSTRIES, CURRENCIES } from '@/lib/constants'
 import { CHANNEL_GROUPS, CHANNEL_CATEGORIES, getChannel } from '@/lib/channels'
 import type { ChannelId, ChannelCategory } from '@/lib/channels'
+import { GA4PropertyPicker } from '@/components/ga4-property-picker'
+import { GSCSitePicker } from '@/components/gsc-site-picker'
+import { GoogleAdsPicker } from '@/components/google-ads-picker'
+import { MetaAdsPicker } from '@/components/meta-ads-picker'
+import { MetaSocialPicker } from '@/components/meta-social-picker'
+
+interface ChannelConnection {
+  channel: ChannelId
+  connected: boolean
+  accountName?: string
+  accountId?: string
+}
 
 interface ProjectData {
   id: string
@@ -65,6 +76,51 @@ export default function ProjectSettingsPage() {
 
   const [selectedChannels, setSelectedChannels] = useState<string[]>([])
   const [logoUrl, setLogoUrl] = useState<string>('')
+  const [connections, setConnections] = useState<Map<ChannelId, ChannelConnection>>(new Map())
+  const [connecting, setConnecting] = useState<ChannelId | null>(null)
+  const [ga4PickerOpen, setGa4PickerOpen] = useState(false)
+  const [googleAdsPickerOpen, setGoogleAdsPickerOpen] = useState(false)
+  const [gscPickerOpen, setGscPickerOpen] = useState(false)
+  const [metaAdsPickerOpen, setMetaAdsPickerOpen] = useState(false)
+  const [facebookPickerOpen, setFacebookPickerOpen] = useState(false)
+  const [instagramPickerOpen, setInstagramPickerOpen] = useState(false)
+  const pickerAutoOpened = useRef(false)
+
+  // Auto-open pickers after OAuth redirect
+  useEffect(() => {
+    if (pickerAutoOpened.current) return
+    const params = new URLSearchParams(window.location.search)
+    const connected = params.get('connected')
+    if (params.get('success') === 'true') {
+      pickerAutoOpened.current = true
+      if (connected === 'GOOGLE_ANALYTICS') setGa4PickerOpen(true)
+      if (connected === 'GOOGLE_ADS') setGoogleAdsPickerOpen(true)
+      if (connected === 'GOOGLE_SEARCH_CONSOLE') setGscPickerOpen(true)
+      if (connected === 'META_ADS') setMetaAdsPickerOpen(true)
+      if (connected === 'FACEBOOK') setFacebookPickerOpen(true)
+      if (connected === 'INSTAGRAM') setInstagramPickerOpen(true)
+    }
+  }, [])
+
+  const parseConnections = (data: any) => {
+    if (data.credentials) {
+      const map = new Map<ChannelId, ChannelConnection>()
+      for (const cred of data.credentials) {
+        map.set(cred.channel as ChannelId, {
+          channel: cred.channel,
+          connected: !!cred.accessToken,
+          accountName: cred.accountName,
+          accountId: cred.accountId,
+        })
+      }
+      setConnections(map)
+    }
+  }
+
+  const handleConnect = async (channelId: ChannelId) => {
+    setConnecting(channelId)
+    window.location.href = `/api/integrations/authorize?platform=${channelId}&projectId=${projectId}`
+  }
 
   // Load project
   useEffect(() => {
@@ -87,6 +143,7 @@ export default function ProjectSettingsPage() {
         })
         setLogoUrl(data.logoUrl || '')
         setSelectedChannels(data.channels.map((ch: any) => ch.channel))
+        parseConnections(data)
       } catch (error) {
         toast.error('Failed to load project')
       } finally {
@@ -246,41 +303,39 @@ export default function ProjectSettingsPage() {
           <div className="space-y-3">
             <Label>Company Logo</Label>
             <div className="flex items-start gap-4">
-              <div className={logoUrl ? 'h-20 w-20 rounded-lg border border-border bg-muted overflow-hidden' : 'h-20 w-20 rounded-lg border border-dashed border-border'}>
-                <ProjectAvatar
-                  logoUrl={logoUrl}
-                  clientName={formData.clientName}
-                  size="lg"
-                  className={logoUrl ? 'h-20 w-20' : ''}
-                />
-              </div>
+              <ProjectAvatar
+                logoUrl={logoUrl}
+                clientName={formData.clientName}
+                size="lg"
+                className="h-20 w-20 border border-dashed border-border text-2xl"
+              />
               <div className="flex-1">
-                <label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    disabled={uploadingLogo}
-                    className="hidden"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={uploadingLogo}
-                  >
-                    {uploadingLogo ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload Logo
-                      </>
-                    )}
-                  </Button>
-                </label>
+                <input
+                  id="logo-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  disabled={uploadingLogo}
+                  className="hidden"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadingLogo}
+                  onClick={() => document.getElementById('logo-upload')?.click()}
+                >
+                  {uploadingLogo ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Logo
+                    </>
+                  )}
+                </Button>
                 <p className="text-xs text-muted-foreground mt-2">PNG, JPG, or WebP. Max 2MB.</p>
               </div>
             </div>
@@ -356,27 +411,6 @@ export default function ProjectSettingsPage() {
             />
           </div>
 
-          {/* Brand Color */}
-          <div className="space-y-2">
-            <Label htmlFor="brandColor">Brand Colour</Label>
-            <div className="flex items-center gap-2">
-              <input
-                id="brandColor"
-                type="color"
-                value={formData.brandColor}
-                onChange={e => setFormData(d => ({ ...d, brandColor: e.target.value }))}
-                className="h-10 w-12 rounded cursor-pointer border border-border bg-transparent"
-              />
-              <Input
-                value={formData.brandColor}
-                onChange={e => setFormData(d => ({ ...d, brandColor: e.target.value }))}
-                className="font-mono text-sm flex-1"
-                maxLength={7}
-                placeholder="#6366f1"
-              />
-            </div>
-          </div>
-
           {/* Zoho Project ID */}
           <div className="space-y-2">
             <Label htmlFor="zoho">Zoho Project ID</Label>
@@ -423,23 +457,24 @@ export default function ProjectSettingsPage() {
               <div className="grid grid-cols-1 gap-3">
                 {CHANNEL_GROUPS[category].map(channel => {
                   const isSelected = selectedChannels.includes(channel.id)
+                  const connection = connections.get(channel.id as ChannelId)
+                  const isConnected = connection?.connected ?? false
                   return (
-                    <label
+                    <div
                       key={channel.id}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        toggleChannel(channel.id)
-                      }}
-                      className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                        isSelected ? 'border-primary bg-primary/8' : 'border-border hover:border-primary/40'
+                      className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                        isSelected ? 'border-primary bg-primary/8' : 'border-border'
                       }`}
                     >
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={() => toggleChannel(channel.id)}
-                        className="mt-0.5"
+                        className="mt-0.5 flex-shrink-0 cursor-pointer"
                       />
-                      <div className="flex-1">
+                      <div
+                        className="flex-1 cursor-pointer"
+                        onClick={() => toggleChannel(channel.id)}
+                      >
                         <div className="flex items-center gap-2">
                           <div
                             className="h-4 w-4 rounded-sm flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0"
@@ -448,10 +483,110 @@ export default function ProjectSettingsPage() {
                             {channel.label.charAt(0)}
                           </div>
                           <span className="font-medium text-sm">{channel.label}</span>
+                          {isSelected && isConnected && (
+                            <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{channel.description}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {isSelected && isConnected && connection?.accountName && connection.accountId !== 'pending-property-selection'
+                            ? connection.accountName
+                            : channel.description}
+                        </p>
                       </div>
-                    </label>
+                      {isSelected && (
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {isConnected && channel.id === 'GOOGLE_ANALYTICS' && (() => {
+                            const needsSelection = !connection?.accountId || connection.accountId === 'pending-property-selection'
+                            return (
+                              <Button
+                                onClick={() => setGa4PickerOpen(true)}
+                                size="sm"
+                                variant={needsSelection ? 'default' : 'outline'}
+                                className="cursor-pointer"
+                              >
+                                {needsSelection ? 'Select Property' : 'Change'}
+                              </Button>
+                            )
+                          })()}
+                          {isConnected && channel.id === 'GOOGLE_ADS' && (() => {
+                            const needsSelection = !connection?.accountId || connection.accountId === 'pending-account-selection'
+                            return (
+                              <Button
+                                onClick={() => setGoogleAdsPickerOpen(true)}
+                                size="sm"
+                                variant={needsSelection ? 'default' : 'outline'}
+                                className="cursor-pointer"
+                              >
+                                {needsSelection ? 'Select Account' : 'Change'}
+                              </Button>
+                            )
+                          })()}
+                          {isConnected && channel.id === 'META_ADS' && (() => {
+                            const needsSelection = !connection?.accountId || connection.accountId === 'pending-account-selection'
+                            return (
+                              <Button
+                                onClick={() => setMetaAdsPickerOpen(true)}
+                                size="sm"
+                                variant={needsSelection ? 'default' : 'outline'}
+                                className="cursor-pointer"
+                              >
+                                {needsSelection ? 'Select Account' : 'Change'}
+                              </Button>
+                            )
+                          })()}
+                          {isConnected && channel.id === 'GOOGLE_SEARCH_CONSOLE' && (() => {
+                            const needsSelection = !connection?.accountId || connection.accountId === 'pending-site-selection'
+                            return (
+                              <Button
+                                onClick={() => setGscPickerOpen(true)}
+                                size="sm"
+                                variant={needsSelection ? 'default' : 'outline'}
+                                className="cursor-pointer"
+                              >
+                                {needsSelection ? 'Select Site' : 'Change'}
+                              </Button>
+                            )
+                          })()}
+                          {isConnected && channel.id === 'FACEBOOK' && (() => {
+                            const needsSelection = !connection?.accountId || connection.accountId === 'pending-page-selection'
+                            return (
+                              <Button
+                                onClick={() => setFacebookPickerOpen(true)}
+                                size="sm"
+                                variant={needsSelection ? 'default' : 'outline'}
+                                className="cursor-pointer"
+                              >
+                                {needsSelection ? 'Select Page' : 'Change'}
+                              </Button>
+                            )
+                          })()}
+                          {isConnected && channel.id === 'INSTAGRAM' && (() => {
+                            const needsSelection = !connection?.accountId || connection.accountId === 'pending-page-selection'
+                            return (
+                              <Button
+                                onClick={() => setInstagramPickerOpen(true)}
+                                size="sm"
+                                variant={needsSelection ? 'default' : 'outline'}
+                                className="cursor-pointer"
+                              >
+                                {needsSelection ? 'Select Account' : 'Change'}
+                              </Button>
+                            )
+                          })()}
+                          <Button
+                            onClick={() => handleConnect(channel.id as ChannelId)}
+                            disabled={connecting === channel.id}
+                            variant={isConnected ? 'outline' : 'default'}
+                            size="sm"
+                            className="cursor-pointer"
+                          >
+                            {connecting === channel.id ? (
+                              <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Connecting...</>
+                            ) : isConnected ? 'Reconnect' : 'Connect'}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   )
                 })}
               </div>
@@ -485,29 +620,83 @@ export default function ProjectSettingsPage() {
           <div className="flex justify-end">
             <Button onClick={handleSaveChannels} disabled={saving}>
               {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                'Save Channels'
-              )}
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+              ) : 'Save Channels'}
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Channel Connections Section */}
-      <ChannelConnectionsSection
+      <GA4PropertyPicker
         projectId={projectId}
-        enabledChannels={selectedChannels as ChannelId[]}
+        open={ga4PickerOpen}
+        onClose={() => setGa4PickerOpen(false)}
+        onSaved={async () => {
+          const res = await fetch(`/api/projects/${projectId}`)
+          if (res.ok) parseConnections(await res.json())
+        }}
+      />
+
+      <GoogleAdsPicker
+        projectId={projectId}
+        open={googleAdsPickerOpen}
+        onClose={() => setGoogleAdsPickerOpen(false)}
+        onSaved={async () => {
+          const res = await fetch(`/api/projects/${projectId}`)
+          if (res.ok) parseConnections(await res.json())
+        }}
+      />
+
+      <GSCSitePicker
+        projectId={projectId}
+        open={gscPickerOpen}
+        onClose={async () => {
+          setGscPickerOpen(false)
+          const res = await fetch(`/api/projects/${projectId}`)
+          if (res.ok) parseConnections(await res.json())
+        }}
+      />
+
+      <MetaAdsPicker
+        projectId={projectId}
+        open={metaAdsPickerOpen}
+        onClose={() => setMetaAdsPickerOpen(false)}
+        onSaved={async () => {
+          const res = await fetch(`/api/projects/${projectId}`)
+          if (res.ok) parseConnections(await res.json())
+        }}
+      />
+
+      <MetaSocialPicker
+        projectId={projectId}
+        channel="FACEBOOK"
+        open={facebookPickerOpen}
+        onClose={() => setFacebookPickerOpen(false)}
+        onSaved={async () => {
+          const res = await fetch(`/api/projects/${projectId}`)
+          if (res.ok) parseConnections(await res.json())
+        }}
+      />
+
+      <MetaSocialPicker
+        projectId={projectId}
+        channel="INSTAGRAM"
+        open={instagramPickerOpen}
+        onClose={() => setInstagramPickerOpen(false)}
+        onSaved={async () => {
+          const res = await fetch(`/api/projects/${projectId}`)
+          if (res.ok) parseConnections(await res.json())
+        }}
       />
 
       {/* Scheduled Reports Section */}
-      <ScheduledReportsSection
+      {/* <ScheduledReportsSection
         projectId={projectId}
         enabledChannels={selectedChannels as ChannelId[]}
-      />
+      /> */}
+
+      {/* Project Team Section */}
+      <ProjectTeamSection projectId={projectId} />
 
       {/* Delete Project Card */}
       <Card className="border-red-500/20 bg-red-50/50 dark:bg-red-950/20">

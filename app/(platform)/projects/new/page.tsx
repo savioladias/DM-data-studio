@@ -193,24 +193,6 @@ export default function NewProjectPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Brand colour</Label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="color"
-                      value={data.brandColor}
-                      onChange={e => update({ brandColor: e.target.value })}
-                      className="h-10 w-12 rounded cursor-pointer border border-border bg-transparent"
-                    />
-                    <Input
-                      value={data.brandColor}
-                      onChange={e => update({ brandColor: e.target.value })}
-                      className="font-mono text-sm"
-                      maxLength={7}
-                      placeholder="#6366f1"
-                    />
-                  </div>
-                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="currency">Currency</Label>

@@ -6,6 +6,7 @@
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { fetchGA4Properties } from '@/lib/integrations/google/analytics'
+import { ensureValidAccessToken } from '@/lib/integrations/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(req: NextRequest) {
@@ -48,8 +49,13 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    // Fetch available GA4 properties
-    const properties = await fetchGA4Properties(gaCredential.accessToken)
+    // Fetch available GA4 properties with refreshed token
+    const accessToken = await ensureValidAccessToken(gaCredential)
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Failed to obtain valid access token' }, { status: 401 })
+    }
+
+    const properties = await fetchGA4Properties(accessToken)
 
     return NextResponse.json({ properties })
   } catch (error) {
@@ -72,7 +78,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { projectId, propertyId } = body
+    const { projectId, propertyId, displayName } = body
 
     if (!projectId || !propertyId) {
       return NextResponse.json(
@@ -109,6 +115,7 @@ export async function POST(req: NextRequest) {
       where: { id: gaCredential.id },
       data: {
         accountId: propertyId,
+        accountName: displayName,
       },
     })
 

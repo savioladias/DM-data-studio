@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    // Get OAuth authorization URL and redirect
+    // Get OAuth authorization URL and redirect the user
     console.log('Getting auth URL for platform:', platform)
     const authUrl = getAuthorizationUrl(platform, projectId)
     console.log('Auth URL:', authUrl.substring(0, 100) + '...')
