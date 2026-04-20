@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { sendApprovalEmail } from '@/lib/email'
 import { z } from 'zod'
 
 const approveSchema = z.object({
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
     })
 
     // TODO: Send approval email to user
+    await sendApprovalEmail(joinRequest.email, joinRequest.name)
 
     return NextResponse.json({ message: 'Request approved', user: newUser })
   } catch (error) {

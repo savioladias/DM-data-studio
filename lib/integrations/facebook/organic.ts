@@ -89,33 +89,53 @@ export async function fetchFacebookOrganicMetrics({
     // Step 1: Get page access token (required for Page Insights)
     const pageToken = await getPageAccessToken(accessToken, pageId)
 
-    // page_post_engagements, page_total_actions, page_actions_post_reactions_total
-    // were all deprecated in Graph API v19.0. Replacements used here:
-    // page_post_engagements → page_engaged_users
-    // page_total_actions    → page_consumptions (content clicks)
-    // page_actions_post_reactions_total → no page-level replacement; derived from posts below
-    const insightMetrics = [
+    // Helper for fetching with timeout and retries
+    async function fetchWithRetry(url: string, retries = 2): Promise<Response> {
+      for (let i = 0; i <= retries; i++) {
+        const controller = new AbortController()
+        const id = setTimeout(() => controller.abort(), 15000) // 15s timeout
+        try {
+          const res = await fetch(url, { signal: controller.signal })
+          clearTimeout(id)
+          return res
+        } catch (err: any) {
+          clearTimeout(id)
+          if (i === retries) throw err
+          if (err.name === 'AbortError' || err.code === 'UND_ERR_CONNECT_TIMEOUT') {
+             await new Promise(r => setTimeout(r, 500 * (i + 1)))
+             continue
+          }
+          throw err
+        }
+      }
+      throw new Error('Fetch failed after retries')
+    }
+
+    // Split metrics into core (almost always available) and extra (might fail on some page types)
+    const coreMetrics = [
       'page_impressions',
       'page_impressions_unique',
       'page_engaged_users',
-      'page_consumptions',
       'page_views_total',
+    ]
+    const extraMetrics = [
+      'page_consumptions',
       'page_fan_adds',
-    ].join(',')
+      'page_daily_follows',
+    ]
 
-    // Use period=day with date strings — more reliable than total_over_range
-    const insightsUrl =
-      `${GRAPH_BASE}/${pageId}/insights?metric=${insightMetrics}` +
-      `&period=day&since=${startDate}&until=${endDate}&access_token=${pageToken}`
+    const coreUrl = `${GRAPH_BASE}/${pageId}/insights?metric=${coreMetrics.join(',')}&period=day&since=${startDate}&until=${endDate}&access_token=${pageToken}`
+    const extraUrl = `${GRAPH_BASE}/${pageId}/insights?metric=${extraMetrics.join(',')}&period=day&since=${startDate}&until=${endDate}&access_token=${pageToken}`
 
-    // Compute unix timestamps for posts endpoint (it uses since/until differently)
+    // Compute unix timestamps for posts endpoint
     const sinceTs = Math.floor(new Date(startDate + 'T00:00:00Z').getTime() / 1000)
     const untilTs = Math.floor(new Date(endDate + 'T23:59:59Z').getTime() / 1000)
 
-    const [pageRes, insightsRes, postsRes] = await Promise.all([
-      fetch(`${GRAPH_BASE}/${pageId}?fields=fan_count&access_token=${pageToken}`),
-      fetch(insightsUrl),
-      fetch(
+    const [pageRes, coreRes, extraRes, postsRes] = await Promise.allSettled([
+      fetchWithRetry(`${GRAPH_BASE}/${pageId}?fields=fan_count&access_token=${pageToken}`),
+      fetchWithRetry(coreUrl),
+      fetchWithRetry(extraUrl),
+      fetchWithRetry(
         `${GRAPH_BASE}/${pageId}/posts?fields=comments.limit(0).summary(true),shares,reactions.limit(0).summary(true)` +
         `&since=${sinceTs}&until=${untilTs}&limit=100&access_token=${pageToken}`
       ),
@@ -123,49 +143,51 @@ export async function fetchFacebookOrganicMetrics({
 
     // Followers
     let followers = 0
-    if (pageRes.ok) {
-      const d = await pageRes.json()
+    if (pageRes.status === 'fulfilled' && pageRes.value.ok) {
+      const d = await pageRes.value.json()
       followers = d.fan_count ?? 0
     }
 
-    // Page-level daily insights
+    // Metrics collection
     let views = 0, viewers = 0, contentInteractions = 0, linkClicks = 0
-    let visits = 0, follows = 0, reactions = 0 // reactions derived from post-level data below
+    let visits = 0, follows = 0, reactions = 0
 
-    if (insightsRes.ok) {
-      const d = await insightsRes.json()
-      if (d.error) {
-        console.error('[FB Insights] API error:', JSON.stringify(d.error))
-      }
+    // Process core insights
+    if (coreRes.status === 'fulfilled' && coreRes.value.ok) {
+      const d = await coreRes.value.json()
       const metrics: any[] = d.data ?? []
       views               = sumDailyValues(metrics, 'page_impressions')
       viewers             = sumDailyValues(metrics, 'page_impressions_unique')
       contentInteractions = sumDailyValues(metrics, 'page_engaged_users')
-      linkClicks          = sumDailyValues(metrics, 'page_consumptions')
       visits              = sumDailyValues(metrics, 'page_views_total')
-      follows             = sumDailyValues(metrics, 'page_fan_adds')
-    } else {
-      const errText = await insightsRes.text().catch(() => '')
-      console.error('[FB Insights] HTTP error', insightsRes.status, errText)
+    } else if (coreRes.status === 'fulfilled') {
+      const errText = await coreRes.value.text().catch(() => '')
+      console.error('[FB Core Insights] HTTP error', coreRes.value.status, errText)
     }
 
-    if (!pageRes.ok) {
-      const errText = await pageRes.text().catch(() => '')
-      console.error('[FB Page] HTTP error', pageRes.status, errText)
+    // Process extra/risky insights
+    if (extraRes.status === 'fulfilled' && extraRes.value.ok) {
+      const d = await extraRes.value.json()
+      const metrics: any[] = d.data ?? []
+      linkClicks = sumDailyValues(metrics, 'page_consumptions')
+      follows    = sumDailyValues(metrics, 'page_fan_adds')
+      
+      // If page_fan_adds is 0, try page_daily_follows (New Page Experience)
+      if (follows === 0) {
+        follows = sumDailyValues(metrics, 'page_daily_follows')
+      }
     }
 
-    // Comments + shares from individual posts in the date range
-    let comments = 0
-    let shares = 0
-
-    if (postsRes.ok) {
-      const d = await postsRes.json()
+    // Post-level data (comments, shares, reactions)
+    let comments = 0, shares = 0
+    if (postsRes.status === 'fulfilled' && postsRes.value.ok) {
+      const d = await postsRes.value.json()
       for (const post of d.data ?? []) {
         comments  += post.comments?.summary?.total_count ?? 0
         shares    += post.shares?.count ?? 0
         reactions += post.reactions?.summary?.total_count ?? 0
       }
-      // One extra page of posts if available
+      
       if (d.paging?.next) {
         try {
           const nextRes = await fetch(d.paging.next)

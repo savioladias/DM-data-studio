@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
+import { sendJoinRequestNotification } from '@/lib/email'
 import { z } from 'zod'
 
 const joinRequestSchema = z.object({
@@ -31,6 +32,9 @@ export async function POST(request: Request) {
       data: { name, email, password: hashed },
       select: { id: true, email: true, name: true },
     })
+
+    // Notify admin by email
+    await sendJoinRequestNotification(request_)
 
     return NextResponse.json(request_, { status: 201 })
   } catch (error) {

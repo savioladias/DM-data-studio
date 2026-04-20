@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { sendRejectionEmail } from '@/lib/email'
 import { z } from 'zod'
 
 const rejectSchema = z.object({
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
     })
 
     // TODO: Send rejection email to user
+    await sendRejectionEmail(joinRequest.email, joinRequest.name)
 
     return NextResponse.json({ message: 'Request rejected' })
   } catch (error) {

@@ -15,8 +15,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Fetch all join requests
+    // Fetch all join requests excluding the admin's own
     const joinRequests = await db.joinRequest.findMany({
+      where: { email: { not: user.email } },
       select: { id: true, name: true, email: true, status: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
     })
