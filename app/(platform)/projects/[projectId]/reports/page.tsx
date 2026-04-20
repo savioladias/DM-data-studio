@@ -109,6 +109,32 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
         const projData = await projectRes.json()
         setProjectData(projData)
 
+        // Load saved summaries
+        const summariesRes = await fetch(`/api/projects/${projectId}/report-summaries`)
+        if (summariesRes.ok) {
+          const { summaries } = await summariesRes.json()
+          if (summaries.executive_summary) {
+            setSavedExecutiveSummary(summaries.executive_summary)
+            setExecutiveSummary(summaries.executive_summary)
+          }
+          if (summaries.conclusions) {
+            setSavedConclusions(summaries.conclusions)
+            setConclusions(summaries.conclusions)
+          }
+          // Load channel summaries
+          const channelMap: Record<string, string> = {}
+          const savedMap: Record<string, string> = {}
+          for (const [key, value] of Object.entries(summaries)) {
+            if (key.startsWith('channel_')) {
+              const channelId = key.replace('channel_', '')
+              channelMap[channelId] = value as string
+              savedMap[channelId] = value as string
+            }
+          }
+          setChannelSummaries(channelMap)
+          setSavedSummaries(savedMap)
+        }
+
         // Set default date range (last 30 days)
         const end = new Date()
         const start = new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000)
@@ -782,9 +808,14 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                   />
                   <div className="flex gap-2">
                     <Button
-                      onClick={() => {
+                      onClick={async () => {
                         setSavedExecutiveSummary(executiveSummary)
                         setEditingExecutive(false)
+                        await fetch(`/api/projects/${projectId}/report-summaries`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ type: 'executive_summary', body: executiveSummary }),
+                        })
                         toast.success('Executive summary saved')
                       }}
                       size="sm"
@@ -1041,12 +1072,17 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                             />
                             <div className="flex gap-2">
                               <Button
-                                onClick={() => {
+                                onClick={async () => {
                                   setSavedSummaries(prev => ({
                                     ...prev,
                                     [channel.channel]: channelSummaries[channel.channel]
                                   }))
                                   setEditingChannel(null)
+                                  await fetch(`/api/projects/${projectId}/report-summaries`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ type: 'channel_summary', channel: channel.channel, body: channelSummaries[channel.channel] }),
+                                  })
                                   toast.success('Summary saved')
                                 }}
                                 size="sm"
@@ -1160,9 +1196,14 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                   />
                   <div className="flex gap-2">
                     <Button
-                      onClick={() => {
+                      onClick={async () => {
                         setSavedConclusions(conclusions)
                         setEditingConclusions(false)
+                        await fetch(`/api/projects/${projectId}/report-summaries`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ type: 'conclusions', body: conclusions }),
+                        })
                         toast.success('Conclusions saved')
                       }}
                       size="sm"

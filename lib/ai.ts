@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 
-const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-3-5-haiku-20241022'
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-haiku-4-5'
 
 async function callClaude(prompt: string, maxTokens: number = 500): Promise<string> {
   if (!process.env.ANTHROPIC_API_KEY) {
