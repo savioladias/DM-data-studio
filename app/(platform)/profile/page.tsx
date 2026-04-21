@@ -32,7 +32,7 @@ export default async function ProfilePage() {
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <div className="space-y-3 flex-1">
+            <div className="space-y-1 flex-1">
               <div>
                 <p className="text-sm text-muted-foreground">Name</p>
                 <p className="text-lg font-medium">{user.name ?? 'Not set'}</p>
