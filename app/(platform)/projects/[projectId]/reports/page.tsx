@@ -241,249 +241,332 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
   }
 
   const exportAsPDF = async (channelIds?: ChannelId[], metricsMap?: Record<string, string[]>) => {
-    const exportChannels = channelIds || selectedChannels
-    const exportMetricsMap = metricsMap || {}
+      const exportChannels = channelIds || selectedChannels
+      const exportMetricsMap = metricsMap || {}
 
-    if (exportChannels.length === 0) {
-      toast.error('Select at least one channel to export')
-      return
-    }
-
-    setExporting(true)
-    setDownloadDialogOpen(false)
-    try {
-      let selectedDataList = metrics.filter(m => exportChannels.includes(m.channel))
-
-      // Filter metrics if custom metrics are specified
-      if (Object.keys(exportMetricsMap).length > 0) {
-        selectedDataList = selectedDataList.map(channel => ({
-          ...channel,
-          metrics: channel.metrics.filter(m => (exportMetricsMap[channel.channel] || []).includes(m.key)),
-        })).filter(channel => channel.metrics.length > 0)
+      if (exportChannels.length === 0) {
+        toast.error('Select at least one channel to export')
+        return
       }
-      const today = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })
-      const totalMetricsCount = selectedDataList.reduce((sum, c) => sum + c.metrics.length, 0)
-      const positiveMetricsCount = selectedDataList.reduce((sum, c) => sum + c.metrics.filter(m => m.trend === 'up').length, 0)
-      const negativeMetricsCount = selectedDataList.reduce((sum, c) => sum + c.metrics.filter(m => m.trend === 'down').length, 0)
 
-      // Generate HTML content with proper styling
-      const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a1a1a; }
-    .page { page-break-after: always; padding: 40px; min-height: 297mm; }
-    .cover-page { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-    .cover-page h1 { font-size: 48px; margin-bottom: 20px; color: #1a1a1a; }
-    .cover-page .client-name { font-size: 28px; font-weight: 600; color: #0084ff; margin: 30px 0; }
-    .cover-page .date-range { font-size: 16px; color: #666; margin: 10px 0; }
-    .cover-page .generated { font-size: 12px; color: #999; margin-top: 40px; }
+      setExporting(true)
+      setDownloadDialogOpen(false)
 
-    h2 { font-size: 24px; margin: 30px 0 15px 0; color: #1a1a1a; border-bottom: 2px solid #0084ff; padding-bottom: 10px; }
-    h3 { font-size: 16px; margin: 20px 0 10px 0; color: #1a1a1a; }
+      // Helper: render an HTML string in an isolated iframe and return a canvas
+      const renderPage = async (html: string): Promise<HTMLCanvasElement> => {
+        const { default: html2canvas } = await import('html2canvas')
+        const iframe = document.createElement('iframe')
+        iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none;'
+        document.body.appendChild(iframe)
+        const doc = iframe.contentDocument!
+        doc.open()
+        doc.write(html)
+        doc.close()
+        await new Promise(r => setTimeout(r, 300))
+        const canvas = await html2canvas(doc.body, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          width: 794,
+          windowWidth: 794,
+        })
+        document.body.removeChild(iframe)
+        return canvas
+      }
 
-    .executive-summary { background: #f0f7ff; padding: 20px; border-left: 4px solid #0084ff; border-radius: 4px; margin: 20px 0; line-height: 1.5; }
-    .executive-summary h3 { margin-top: 0; color: #0084ff; }
+      // Helper: convert markdown-ish text to clean HTML
+      const mdToHtml = (text: string): string => {
+        return text
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/^### (.+)$/gm, '<h4 style="font-size:13px;font-weight:700;color:#0f172a;margin:14px 0 6px;">$1</h4>')
+          .replace(/^## (.+)$/gm, '<h3 style="font-size:14px;font-weight:700;color:#0f172a;margin:18px 0 8px;border-bottom:1px solid #e2e8f0;padding-bottom:6px;">$1</h3>')
+          .replace(/^# (.+)$/gm, '<h2 style="font-size:16px;font-weight:800;color:#0f172a;margin:20px 0 10px;">$1</h2>')
+          .replace(/^- (.+)$/gm, '<li style="margin:4px 0;padding-left:4px;">$1</li>')
+          .replace(/^(\d+)\. (.+)$/gm, '<li style="margin:4px 0;padding-left:4px;"><span style="font-weight:700;color:#6366f1;">$1.</span> $2</li>')
+          .replace(/^---$/gm, '<hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;">')
+          .replace(/\n\n/g, '</p><p style="margin:8px 0;">')
+          .replace(/\n/g, '<br>')
+      }
 
-    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 20px 0; }
-    .kpi-card { background: #f9f9f9; border: 1px solid #ddd; padding: 20px; text-align: center; border-radius: 4px; }
-    .kpi-value { font-size: 32px; font-weight: bold; margin-bottom: 10px; }
-    .kpi-label { font-size: 12px; color: #666; text-transform: uppercase; font-weight: 600; }
+      // Shared CSS injected into every page
+      const baseCSS = `
+        <style>
+          * { margin:0; padding:0; box-sizing:border-box; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #ffffff;
+            color: #0f172a;
+            width: 794px;
+            word-spacing: normal;
+            letter-spacing: normal;
+            -webkit-font-smoothing: antialiased;
+          }
+          li { list-style: none; }
+        </style>`
 
-    .channel-section { page-break-inside: avoid; margin: 30px 0; padding: 20px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; }
-    .channel-header { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
-    .channel-icon { width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; }
-    .channel-title { font-size: 18px; font-weight: bold; color: #1a1a1a; }
-    .channel-meta { font-size: 12px; color: #666; }
-
-    table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-    th { background: #f0f0f0; padding: 12px; text-align: left; font-weight: 600; font-size: 13px; border-bottom: 2px solid #ddd; }
-    td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 12px; }
-    tr:last-child td { border-bottom: none; }
-
-    .metric-value { font-weight: 600; color: #1a1a1a; }
-    .positive { color: #10b981; font-weight: bold; }
-    .negative { color: #ef4444; font-weight: bold; }
-    .stable { color: #666; }
-
-    .ai-insights { background: #e6f7ff; border-left: 3px solid #0084ff; padding: 15px; margin: 15px 0; border-radius: 4px; font-size: 12px; line-height: 1.6; }
-    .ai-insights h4 { margin: 0 0 10px 0; color: #0084ff; font-size: 13px; }
-
-    .conclusions { background: #f0f9ff; border-left: 4px solid #0284c7; padding: 20px; margin: 20px 0; border-radius: 4px; }
-    .conclusions h3 { margin-top: 0; color: #0284c7; }
-  </style>
-</head>
-<body>
-  <!-- Cover Page -->
-  <div class="page cover-page">
-    <h1>Marketing Performance Report</h1>
-    <div class="client-name">${projectData?.clientName ?? 'Project'}</div>
-    <div class="date-range">Date Range: ${startDate ?? 'N/A'} to ${endDate ?? 'N/A'}</div>
-    <div class="generated">Generated on ${today}</div>
-  </div>
-
-  <!-- Main Content Page -->
-  <div class="page">
-    <h2>Executive Summary</h2>
-    <div class="executive-summary">
-      <p>${executiveSummary || 'Overview of marketing performance across selected channels. Key highlights and trends are detailed in the channel-specific sections below.'}</p>
-    </div>
-
-    <h2>Key Metrics Overview</h2>
-    <div class="kpi-grid">
-      <div class="kpi-card">
-        <div class="kpi-value" style="color: #0084ff;">${totalMetricsCount}</div>
-        <div class="kpi-label">Total Metrics</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-value positive">${positiveMetricsCount}</div>
-        <div class="kpi-label">Positive Trends</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-value negative">${negativeMetricsCount}</div>
-        <div class="kpi-label">Areas of Concern</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-value">${totalMetricsCount - positiveMetricsCount - negativeMetricsCount}</div>
-        <div class="kpi-label">Stable Metrics</div>
-      </div>
-    </div>
-
-    ${selectedDataList.map(channel => {
-      const posCount = channel.metrics.filter(m => m.trend === 'up').length
-      const negCount = channel.metrics.filter(m => m.trend === 'down').length
-      const channelColor = getChannel(channel.channel)?.color || '#0084ff'
-
-      return `
-        <div class="channel-section">
-          <div class="channel-header">
-            <div class="channel-icon" style="background-color: ${channelColor};">${getChannel(channel.channel)?.label.charAt(0) || 'C'}</div>
-            <div>
-              <div class="channel-title">${channel.label}</div>
-              <div class="channel-meta">${channel.metrics.length} metrics • ${posCount} positive • ${negCount} declining</div>
-            </div>
+      // Page mini-header reused on content pages
+      const pageHeader = (clientName: string, date: string) => `
+        <div style="display:table;width:100%;margin-bottom:28px;padding-bottom:14px;border-bottom:1px solid #e2e8f0;">
+          <div style="display:table-cell;vertical-align:middle;">
+            <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:3px;">Marketing Performance Report</div>
+            <div style="font-size:18px;font-weight:800;color:#0f172a;">${clientName}</div>
           </div>
+          <div style="display:table-cell;vertical-align:middle;text-align:right;">
+            <div style="font-size:10px;color:#94a3b8;">Generated</div>
+            <div style="font-size:12px;font-weight:600;color:#475569;">${date}</div>
+          </div>
+        </div>`
 
-          ${channel.metrics[0] ? `
-            <div style="margin: 15px 0;">
-              <h3 style="margin-top: 0; margin-bottom: 10px;">Top Metric Trend Chart</h3>
-              <div style="background: #f9f9f9; padding: 15px; border-radius: 4px; text-align: center; font-size: 12px; color: #666;">
-                [Chart: ${channel.metrics[0].label} - 30 Day Trend]
+      try {
+        let selectedDataList = metrics.filter(m => exportChannels.includes(m.channel))
+        if (Object.keys(exportMetricsMap).length > 0) {
+          selectedDataList = selectedDataList.map(channel => ({
+            ...channel,
+            metrics: channel.metrics.filter(m => (exportMetricsMap[channel.channel] || []).includes(m.key)),
+          })).filter(channel => channel.metrics.length > 0)
+        }
+
+        const today = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })
+        const totalMetricsCount = selectedDataList.reduce((sum, c) => sum + c.metrics.length, 0)
+        const positiveMetricsCount = selectedDataList.reduce((sum, c) => sum + c.metrics.filter(m => m.trend === 'up').length, 0)
+        const negativeMetricsCount = selectedDataList.reduce((sum, c) => sum + c.metrics.filter(m => m.trend === 'down').length, 0)
+        const stableCount = totalMetricsCount - positiveMetricsCount - negativeMetricsCount
+        const clientName = projectData?.clientName ?? 'Project'
+
+        // ── PAGE 1: COVER ──────────────────────────────────────────────────────
+        const coverHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8">${baseCSS}</head><body>
+          <div style="width:794px;height:1123px;overflow:hidden;position:relative;background:#ffffff;">
+            <div style="height:7px;background:linear-gradient(90deg,#6366f1 0%,#8b5cf6 45%,#06b6d4 100%);"></div>
+            <div style="background:#0f172a;padding:26px 48px;display:table;width:100%;">
+              <div style="display:table-cell;vertical-align:middle;">
+                <span style="font-size:11px;font-weight:600;color:#94a3b8;letter-spacing:2px;text-transform:uppercase;">Marketing Performance Report</span>
+              </div>
+              <div style="display:table-cell;vertical-align:middle;text-align:right;">
+                <span style="font-size:11px;color:#475569;">${today}</span>
               </div>
             </div>
-          ` : ''}
-
-          <h3>Performance Metrics</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Metric Name</th>
-                <th style="text-align: right;">Current Value</th>
-                <th style="text-align: right;">Previous Period</th>
-                <th style="text-align: center;">Change</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${channel.metrics.map(metric => {
-                const isPositive = metric.trend === 'up'
-                const isNegative = metric.trend === 'down'
-                const arrow = isPositive ? '↑' : isNegative ? '↓' : '—'
-                const changeClass = isPositive ? 'positive' : isNegative ? 'negative' : 'stable'
-                const changePct = metric.deltaPercent ? (metric.deltaPercent > 0 ? '+' : '') + metric.deltaPercent.toFixed(1) + '%' : '—'
-
-                return `
-                  <tr>
-                    <td><strong>${metric.label}</strong></td>
-                    <td style="text-align: right;" class="metric-value">${formatValue(metric.value)} ${metric.unit}</td>
-                    <td style="text-align: right;">${metric.previous ? formatValue(metric.previous) : '—'}</td>
-                    <td style="text-align: center;"><span class="${changeClass}">${arrow} ${changePct}</span></td>
-                  </tr>
-                `
-              }).join('')}
-            </tbody>
-          </table>
-
-          ${savedSummaries[channel.channel] ? `
-            <div class="ai-insights">
-              <h4>Channel Summary</h4>
-              <p>${savedSummaries[channel.channel].replace(/\n/g, '<br>')}</p>
+            <div style="padding:80px 48px 60px;background:linear-gradient(160deg,#f8fafc 0%,#eef2ff 100%);">
+              <div style="display:inline-block;background:#6366f1;color:#fff;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:5px 14px;border-radius:4px;margin-bottom:24px;">Performance Report</div>
+              <div style="font-size:52px;font-weight:800;color:#0f172a;line-height:1.05;letter-spacing:-1.5px;margin-bottom:16px;">${clientName}</div>
+              <div style="width:56px;height:4px;background:linear-gradient(90deg,#6366f1,#06b6d4);border-radius:2px;margin-bottom:22px;"></div>
+              <div style="font-size:15px;color:#64748b;line-height:1.65;max-width:500px;">Comprehensive analysis of marketing channel performance, trends, and strategic insights.</div>
+              <div style="margin-top:36px;font-size:13px;color:#94a3b8;"><span style="font-weight:600;color:#64748b;">Period:</span>&nbsp;${startDate || 'N/A'} — ${endDate || 'N/A'}</div>
+              <div style="margin-top:10px;font-size:13px;color:#94a3b8;">${selectedDataList.length} channel${selectedDataList.length !== 1 ? 's' : ''} included</div>
             </div>
-          ` : ''}
-        </div>
-      `
-    }).join('')}
+          </div>
+        </body></html>`
 
-    ${conclusions ? `
-      <div class="conclusions">
-        <h3>Conclusions & Recommendations</h3>
-        <p>${conclusions}</p>
-      </div>
-    ` : ''}
-  </div>
-</body>
-</html>
-      `
+        // ── PAGE 2: SUMMARY ────────────────────────────────────────────────────
+        const execText = savedExecutiveSummary || executiveSummary
+        const summaryHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8">${baseCSS}</head><body>
+          <div style="width:794px;padding:44px 48px;background:#ffffff;">
+            ${pageHeader(clientName, today)}
+            ${execText ? `
+            <div style="margin-bottom:28px;border-radius:10px;overflow:hidden;border:1px solid #e0e7ff;">
+              <div style="background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);padding:14px 20px;display:table;width:100%;">
+                <div style="display:table-cell;vertical-align:middle;">
+                  <div style="width:7px;height:7px;border-radius:50%;background:#fff;opacity:0.8;display:inline-block;margin-right:8px;vertical-align:middle;"></div>
+                  <span style="font-size:11px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:1px;vertical-align:middle;">Executive Summary</span>
+                </div>
+              </div>
+              <div style="background:#fafafe;padding:20px 22px;font-size:13px;color:#334155;line-height:1.8;">
+                <p style="margin:0;">${mdToHtml(execText)}</p>
+              </div>
+            </div>` : ''}
+            <div style="margin-bottom:28px;">
+              <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:12px;display:table;width:100%;">
+                <div style="display:table-cell;vertical-align:middle;">
+                  <div style="width:3px;height:16px;background:linear-gradient(180deg,#6366f1,#06b6d4);border-radius:2px;display:inline-block;margin-right:10px;vertical-align:middle;"></div>
+                  <span style="vertical-align:middle;">Key Metrics Overview</span>
+                </div>
+              </div>
+              <div style="display:table;width:100%;border-spacing:10px;">
+                <div style="display:table-row;">
+                  <div style="display:table-cell;width:25%;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;text-align:center;">
+                    <div style="font-size:26px;font-weight:800;color:#6366f1;line-height:1;">${totalMetricsCount}</div>
+                    <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;margin-top:5px;">Total Metrics</div>
+                  </div>
+                  <div style="display:table-cell;width:25%;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;text-align:center;">
+                    <div style="font-size:26px;font-weight:800;color:#059669;line-height:1;">${positiveMetricsCount}</div>
+                    <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;margin-top:5px;">Positive Trends</div>
+                  </div>
+                  <div style="display:table-cell;width:25%;background:#fff1f2;border:1px solid #fecdd3;border-radius:10px;padding:16px;text-align:center;">
+                    <div style="font-size:26px;font-weight:800;color:#dc2626;line-height:1;">${negativeMetricsCount}</div>
+                    <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;margin-top:5px;">Areas of Concern</div>
+                  </div>
+                  <div style="display:table-cell;width:25%;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:16px;text-align:center;">
+                    <div style="font-size:26px;font-weight:800;color:#d97706;line-height:1;">${stableCount}</div>
+                    <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;margin-top:5px;">Stable Metrics</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:12px;">
+                <div style="width:3px;height:16px;background:linear-gradient(180deg,#6366f1,#06b6d4);border-radius:2px;display:inline-block;margin-right:10px;vertical-align:middle;"></div>
+                <span style="vertical-align:middle;">Channels Included</span>
+              </div>
+              <div style="display:table;width:100%;border-spacing:8px 8px;">
+                ${selectedDataList.map(ch => {
+                  const chColor = getChannel(ch.channel)?.color || '#6366f1'
+                  const chInitial = (getChannel(ch.channel)?.label || ch.label).charAt(0).toUpperCase()
+                  const pos = ch.metrics.filter(m => m.trend === 'up').length
+                  const neg = ch.metrics.filter(m => m.trend === 'down').length
+                  return `<div style="display:table-row;">
+                    <div style="display:table-cell;padding:4px;">
+                      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;display:table;width:100%;">
+                        <div style="display:table-cell;vertical-align:middle;width:44px;">
+                          <div style="width:36px;height:36px;border-radius:8px;background:${chColor};text-align:center;line-height:36px;color:#fff;font-size:15px;font-weight:800;">${chInitial}</div>
+                        </div>
+                        <div style="display:table-cell;vertical-align:middle;padding-left:10px;">
+                          <div style="font-size:13px;font-weight:700;color:#0f172a;">${ch.label}</div>
+                          <div style="font-size:11px;color:#94a3b8;margin-top:2px;">${ch.metrics.length} metrics &nbsp;·&nbsp; <span style="color:#059669;">${pos} up</span> &nbsp;·&nbsp; <span style="color:#dc2626;">${neg} down</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>`
+                }).join('')}
+              </div>
+            </div>
+          </div>
+        </body></html>`
 
-      // Create a sandboxed iframe to completely isolate from Tailwind CSS
-      const iframe = document.createElement('iframe')
-      iframe.style.position = 'absolute'
-      iframe.style.left = '-9999px'
-      iframe.style.width = '1200px'
-      iframe.style.height = '100vh'
-      document.body.appendChild(iframe)
+        // ── PAGES 3+: ONE PER CHANNEL (table only) ────────────────────────────
+        const channelTablePages = selectedDataList.map(channel => {
+          const posCount = channel.metrics.filter(m => m.trend === 'up').length
+          const negCount = channel.metrics.filter(m => m.trend === 'down').length
+          const channelColor = getChannel(channel.channel)?.color || '#6366f1'
+          const channelInitial = (getChannel(channel.channel)?.label || channel.label).charAt(0).toUpperCase()
 
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
-      if (!iframeDoc) throw new Error('Could not access iframe document')
+          const rows = channel.metrics.map((metric, idx) => {
+            const isPositive = metric.trend === 'up'
+            const isNegative = metric.trend === 'down'
+            const arrow = isPositive ? '▲' : isNegative ? '▼' : '—'
+            const changePct = metric.deltaPercent != null
+              ? (metric.deltaPercent > 0 ? '+' : '') + metric.deltaPercent.toFixed(1) + '%'
+              : '—'
+            const changeColor = isPositive ? '#059669' : isNegative ? '#dc2626' : '#6b7280'
+            const changeBg = isPositive ? '#dcfce7' : isNegative ? '#fee2e2' : '#f1f5f9'
+            const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc'
+            return `<tr style="background:${rowBg};">
+              <td style="padding:10px 18px;font-size:13px;font-weight:500;color:#1e293b;border-bottom:1px solid #e2e8f0;">${metric.label}</td>
+              <td style="padding:10px 18px;font-size:13px;font-weight:700;color:#0f172a;text-align:right;border-bottom:1px solid #e2e8f0;">${formatValue(metric.value)}${metric.unit ? ' ' + metric.unit : ''}</td>
+              <td style="padding:10px 18px;font-size:13px;color:#64748b;text-align:right;border-bottom:1px solid #e2e8f0;">${metric.previous != null ? formatValue(metric.previous) : '—'}</td>
+              <td style="padding:10px 18px;text-align:center;border-bottom:1px solid #e2e8f0;">
+                <span style="background:${changeBg};color:${changeColor};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;">${arrow} ${changePct}</span>
+              </td>
+            </tr>`
+          }).join('')
 
-      iframeDoc.documentElement.innerHTML = htmlContent
+          return `<!DOCTYPE html><html><head><meta charset="UTF-8">${baseCSS}</head><body>
+            <div style="width:794px;padding:44px 48px;background:#ffffff;">
+              ${pageHeader(clientName, today)}
+              <div style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;box-shadow:0 1px 6px rgba(0,0,0,0.06);">
+                <div style="background:${channelColor};padding:20px 24px;display:table;width:100%;">
+                  <div style="display:table-cell;vertical-align:middle;width:56px;">
+                    <div style="width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,0.2);text-align:center;line-height:44px;color:#fff;font-size:20px;font-weight:800;">${channelInitial}</div>
+                  </div>
+                  <div style="display:table-cell;vertical-align:middle;padding-left:4px;">
+                    <div style="font-size:19px;font-weight:800;color:#fff;">${channel.label}</div>
+                    <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:2px;">${channel.metrics.length} metrics tracked</div>
+                  </div>
+                  <div style="display:table-cell;vertical-align:middle;text-align:right;">
+                    <span style="background:rgba(255,255,255,0.2);color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;border:1px solid rgba(255,255,255,0.3);margin-left:6px;">${posCount} positive</span>
+                    <span style="background:rgba(0,0,0,0.15);color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;border:1px solid rgba(255,255,255,0.2);margin-left:6px;">${negCount} declining</span>
+                  </div>
+                </div>
+                <table style="width:100%;border-collapse:collapse;">
+                  <thead>
+                    <tr style="background:#f8fafc;">
+                      <th style="padding:11px 18px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;text-align:left;border-bottom:2px solid #e2e8f0;">Metric</th>
+                      <th style="padding:11px 18px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;text-align:right;border-bottom:2px solid #e2e8f0;">Current</th>
+                      <th style="padding:11px 18px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;text-align:right;border-bottom:2px solid #e2e8f0;">Previous</th>
+                      <th style="padding:11px 18px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;text-align:center;border-bottom:2px solid #e2e8f0;">Change</th>
+                    </tr>
+                  </thead>
+                  <tbody>${rows}</tbody>
+                </table>
+              </div>
+            </div>
+          </body></html>`
+        })
 
-      // Wait for iframe content to load
-      await new Promise(resolve => setTimeout(resolve, 500))
+        // ── PAGES: ONE PER CHANNEL AI SUMMARY ─────────────────────────────────
+        const channelSummaryPages = selectedDataList
+          .filter(channel => savedSummaries[channel.channel])
+          .map(channel => {
+            const channelColor = getChannel(channel.channel)?.color || '#6366f1'
+            const summaryText = savedSummaries[channel.channel]
+            return `<!DOCTYPE html><html><head><meta charset="UTF-8">${baseCSS}</head><body>
+              <div style="width:794px;padding:44px 48px;background:#ffffff;">
+                ${pageHeader(clientName, today)}
+                <div style="border-radius:10px;overflow:hidden;border:1px solid #e0f2fe;">
+                  <div style="background:${channelColor};padding:14px 20px;display:table;width:100%;">
+                    <div style="display:table-cell;vertical-align:middle;">
+                      <div style="width:7px;height:7px;border-radius:50%;background:#fff;opacity:0.8;display:inline-block;margin-right:8px;vertical-align:middle;"></div>
+                      <span style="font-size:11px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:1px;vertical-align:middle;">${channel.label} — AI Analysis</span>
+                    </div>
+                  </div>
+                  <div style="background:#f8fafc;padding:24px 26px;font-size:13px;color:#334155;line-height:1.85;">
+                    <p style="margin:0;">${mdToHtml(summaryText)}</p>
+                  </div>
+                </div>
+              </div>
+            </body></html>`
+          })
 
-      const { default: html2canvas } = await import('html2canvas')
-      const canvas = await html2canvas(iframeDoc.body, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        allowTaint: true,
-      })
-      document.body.removeChild(iframe)
+        // ── CONCLUSIONS PAGE ───────────────────────────────────────────────────
+        const conclusionsText = savedConclusions || conclusions
+        const conclusionPages = conclusionsText ? [`<!DOCTYPE html><html><head><meta charset="UTF-8">${baseCSS}</head><body>
+          <div style="width:794px;padding:44px 48px;background:#ffffff;">
+            ${pageHeader(clientName, today)}
+            <div style="border-radius:10px;overflow:hidden;border:1px solid #bae6fd;">
+              <div style="background:linear-gradient(135deg,#0284c7 0%,#0ea5e9 100%);padding:14px 20px;">
+                <div style="width:7px;height:7px;border-radius:50%;background:#fff;opacity:0.8;display:inline-block;margin-right:8px;vertical-align:middle;"></div>
+                <span style="font-size:11px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:1px;vertical-align:middle;">Conclusions &amp; Recommendations</span>
+              </div>
+              <div style="background:#f0f9ff;padding:24px 26px;font-size:13px;color:#334155;line-height:1.85;">
+                <p style="margin:0;">${mdToHtml(conclusionsText)}</p>
+              </div>
+            </div>
+            <div style="margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0;display:table;width:100%;">
+              <div style="display:table-cell;font-size:10px;color:#94a3b8;">Data accurate as of ${today}.</div>
+              <div style="display:table-cell;text-align:right;font-size:10px;color:#cbd5e1;font-weight:600;">DM Data Studio</div>
+            </div>
+          </div>
+        </body></html>`] : []
 
-      const imgData = canvas.toDataURL('image/png')
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      })
+        // ── RENDER ALL PAGES & BUILD PDF ───────────────────────────────────────
+        const allPageHtmls = [
+          coverHtml,
+          summaryHtml,
+          ...channelTablePages,
+          ...channelSummaryPages,
+          ...conclusionPages,
+        ]
 
-      const imgWidth = 210
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-      let heightLeft = imgHeight
-      let position = 0
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+        const A4_W = 210
+        const A4_H = 297
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-      heightLeft -= 297
+        for (let i = 0; i < allPageHtmls.length; i++) {
+          const canvas = await renderPage(allPageHtmls[i])
+          const imgData = canvas.toDataURL('image/png')
+          const imgH = (canvas.height * A4_W) / canvas.width
+          if (i > 0) pdf.addPage()
+          pdf.addImage(imgData, 'PNG', 0, 0, A4_W, imgH > A4_H ? A4_H : imgH)
+        }
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight
-        pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-        heightLeft -= 297
+        pdf.save(`marketing-report-${new Date().toISOString().split('T')[0]}.pdf`)
+        toast.success('Report exported as PDF')
+      } catch (error) {
+        console.error('PDF export error:', error)
+        toast.error('Failed to export PDF')
+      } finally {
+        setExporting(false)
       }
-
-      pdf.save(`marketing-report-${new Date().toISOString().split('T')[0]}.pdf`)
-      toast.success('Report exported as PDF')
-    } catch (error) {
-      console.error('PDF export error:', error)
-      toast.error('Failed to export PDF')
-    } finally {
-      setExporting(false)
     }
-  }
 
   const exportAsHTML = () => {
     if (selectedChannels.length === 0) {
